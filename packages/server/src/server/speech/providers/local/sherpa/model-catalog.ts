@@ -32,6 +32,33 @@ export const SHERPA_ONNX_MODEL_CATALOG = {
     description:
       "NVIDIA Parakeet TDT v3 (offline NeMo transducer, 25 European languages, auto-detected).",
   },
+  "paraformer-zh-int8": {
+    kind: "stt-offline",
+    archiveUrl:
+      "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2023-03-28.tar.bz2",
+    extractedDir: "sherpa-onnx-paraformer-zh-2023-03-28",
+    requiredFiles: ["model.int8.onnx", "tokens.txt"],
+    description:
+      "Paraformer Chinese + English (offline, int8 quantized, excellent for Mandarin Chinese).",
+  },
+  "funasr-nano-int8": {
+    kind: "stt-offline",
+    archiveUrl:
+      "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-funasr-nano-int8-2025-12-30.tar.bz2",
+    extractedDir: "sherpa-onnx-funasr-nano-int8-2025-12-30",
+    requiredFiles: ["model.onnx", "tokens.txt"],
+    description:
+      "FunASR Nano (Chinese, English, Japanese, 7 Chinese dialects, auto-detected).",
+  },
+  "cohere-transcribe-14-lang-int8": {
+    kind: "stt-offline",
+    archiveUrl:
+      "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01.tar.bz2",
+    extractedDir: "sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01",
+    requiredFiles: ["model.int8.onnx", "tokens.txt"],
+    description:
+      "Cohere Transcribe 14 languages (Chinese, Japanese, Korean, Vietnamese, English, French, German, Italian, Spanish, Portuguese, Greek, Dutch, Polish, Arabic).",
+  },
   "kokoro-en-v0_19": {
     kind: "tts",
     archiveUrl:

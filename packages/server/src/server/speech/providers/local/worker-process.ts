@@ -83,15 +83,22 @@ function getSttEngine(
     return existing;
   }
   const modelDir = getLocalSpeechModelDir(config.modelsDir, modelId);
+  const isParaformer = modelId.includes("paraformer");
   const created = new SherpaOfflineRecognizerEngine(
     {
-      model: {
-        kind: "nemo_transducer",
-        encoder: `${modelDir}/encoder.int8.onnx`,
-        decoder: `${modelDir}/decoder.int8.onnx`,
-        joiner: `${modelDir}/joiner.int8.onnx`,
-        tokens: `${modelDir}/tokens.txt`,
-      },
+      model: isParaformer
+        ? {
+            kind: "paraformer",
+            model: `${modelDir}/model.onnx`,
+            tokens: `${modelDir}/tokens.txt`,
+          }
+        : {
+            kind: "nemo_transducer",
+            encoder: `${modelDir}/encoder.int8.onnx`,
+            decoder: `${modelDir}/decoder.int8.onnx`,
+            joiner: `${modelDir}/joiner.int8.onnx`,
+            tokens: `${modelDir}/tokens.txt`,
+          },
       numThreads: 2,
       debug: 0,
     },
