@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "EntryAbility description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Paseo"
+    },
+    {
+      "name": "reason_internet",
+      "value": "Need network access to connect to Paseo service"
+    },
+    {
+      "name": "reason_microphone",
+      "value": "Need microphone access for voice input"
+    },
+    {
+      "name": "reason_read_media",
+      "value": "Need media access for file upload"
+    }
+  ]
+}
