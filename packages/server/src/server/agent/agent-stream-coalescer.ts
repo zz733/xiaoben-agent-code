@@ -178,7 +178,7 @@ export class AgentStreamCoalescer {
     const timer = this.timers.setTimeout(() => {
       this.flushBuffer(buffer.agentId, buffer);
     }, this.windowMs);
-    timer.unref?.();
+    (timer as unknown as NodeJS.Timeout).unref?.();
     buffer.timer = timer;
   }
 

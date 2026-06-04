@@ -721,7 +721,7 @@ interface GitHubPollTarget {
   cwd: string;
   headRef: string;
   retainCount: number;
-  timer: NodeJS.Timeout | null;
+  timer: ReturnType<typeof setTimeout> | null;
   latestStatus: GitHubCurrentPullRequestStatus | null;
   consecutiveErrors: number;
   callbacks: Set<(status: GitHubCurrentPullRequestStatus | null) => void>;

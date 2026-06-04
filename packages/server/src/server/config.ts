@@ -21,7 +21,7 @@ import { resolveSpeechConfig } from "./speech/speech-config-resolver.js";
 import { mergeHostnames, parseHostnamesEnv, type HostnamesConfig } from "./hostnames.js";
 
 const DEFAULT_PORT = 6767;
-const DEFAULT_RELAY_ENDPOINT = "relay.paseo.sh:443";
+const DEFAULT_RELAY_ENDPOINT = "relay.17ai.pro:443";
 const DEFAULT_APP_BASE_URL = "https://app.paseo.sh";
 
 function parseBooleanEnv(value: string | undefined): boolean | undefined {

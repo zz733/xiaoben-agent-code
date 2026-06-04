@@ -266,8 +266,8 @@ interface WorkspaceGitTarget {
   cwd: string;
   listeners: Set<WorkspaceGitListener>;
   watchers: FSWatcher[];
-  debounceTimer: NodeJS.Timeout | null;
-  selfHealTimer: NodeJS.Timeout | null;
+  debounceTimer: ReturnType<typeof setTimeout> | null;
+  selfHealTimer: ReturnType<typeof setInterval> | null;
   githubPollSubscription: { unsubscribe: () => void } | null;
   githubPollHeadRef: string | null;
   refreshState: WorkspaceGitRefreshState;
@@ -293,7 +293,7 @@ interface RepoGitTarget {
   repoGitRoot: string;
   cwd: string;
   workspaceKeys: Set<string>;
-  intervalId: NodeJS.Timeout | null;
+  intervalId: ReturnType<typeof setInterval> | null;
   fetchInFlight: boolean;
 }
 
@@ -303,7 +303,7 @@ interface WorkingTreeWatchTarget {
   repoWatchPath: string | null;
   watchers: FSWatcher[];
   watchedPaths: Set<string>;
-  fallbackRefreshInterval: NodeJS.Timeout | null;
+  fallbackRefreshInterval: ReturnType<typeof setInterval> | null;
   linuxTreeRefreshPromise: Promise<void> | null;
   linuxTreeRefreshQueued: boolean;
   listeners: Set<() => void>;

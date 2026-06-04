@@ -27,7 +27,7 @@ interface CheckoutDiffWatchTarget {
   compare: CheckoutDiffCompareInput;
   listeners: Set<(snapshot: CheckoutDiffSnapshotPayload) => void>;
   workingTreeWatchUnsubscribe: (() => void) | null;
-  debounceTimer: NodeJS.Timeout | null;
+  debounceTimer: ReturnType<typeof setTimeout> | null;
   refreshPromise: Promise<void> | null;
   refreshQueued: boolean;
   latestPayload: CheckoutDiffSnapshotPayload | null;

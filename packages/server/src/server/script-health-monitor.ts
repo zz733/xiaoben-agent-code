@@ -27,7 +27,7 @@ export class ScriptHealthMonitor {
   private readonly routeStates = new Map<string, RouteHealthState>();
   private readonly lastEmittedSnapshots = new Map<string, string>();
 
-  private intervalHandle: NodeJS.Timeout | null = null;
+  private intervalHandle: ReturnType<typeof setInterval> | null = null;
   private pollInFlight = false;
 
   constructor({

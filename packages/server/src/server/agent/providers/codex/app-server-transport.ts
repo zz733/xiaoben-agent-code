@@ -30,7 +30,7 @@ interface JsonRpcNotification {
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
-  timer: NodeJS.Timeout;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 type RequestHandler = (params: unknown) => unknown;

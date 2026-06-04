@@ -450,6 +450,40 @@ export async function stopDesktopDaemon(): Promise<DesktopDaemonStatus> {
   return await resolveDesktopDaemonStatus();
 }
 
+/**
+ * Ensure the desktop-managed daemon is running.
+ * Checks current status and starts the daemon if it's not running.
+ * Safe to call multiple times — returns immediately if already running.
+ */
+export async function ensureDaemonRunning(): Promise<DesktopDaemonStatus> {
+  const status = await resolveDesktopDaemonStatus();
+  if (status.status === "running") {
+    log.info("[desktop daemon] already running, skipping auto-start", {
+      pid: status.pid,
+      listen: status.listen,
+    });
+    return status;
+  }
+
+  log.info("[desktop daemon] not running, auto-starting", {
+    currentStatus: status.status,
+    error: status.error,
+  });
+
+  try {
+    const started = await startDaemon();
+    log.info("[desktop daemon] auto-start succeeded", {
+      pid: started.pid,
+      listen: started.listen,
+    });
+    return started;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log.error("[desktop daemon] auto-start failed", { error: message });
+    throw error;
+  }
+}
+
 async function restartDaemon(): Promise<DesktopDaemonStatus> {
   assertBuiltInDaemonManagementEnabled(await getDesktopSettingsStore().get());
   await stopDesktopDaemon();

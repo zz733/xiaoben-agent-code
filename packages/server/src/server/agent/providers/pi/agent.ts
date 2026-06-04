@@ -186,7 +186,7 @@ interface PendingPiUserMessage {
 interface PendingExtensionResult {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
-  timer: NodeJS.Timeout;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 interface ActiveAskUserDialog {

@@ -1,5 +1,10 @@
 process.emitWarning = (() => {}) as typeof process.emitWarning;
 
+// Clear IDE-set environment variables that interfere with development mode.
+// TRAE SOLO CN IDE sets ELECTRON_FORCE_IS_PACKAGED=true which breaks dev server loading.
+delete process.env.ELECTRON_FORCE_IS_PACKAGED;
+process.env.CI = "false";
+
 import log from "electron-log/main";
 log.transports.console.level = "info";
 log.initialize({ spyRendererConsole: true });
@@ -11,7 +16,7 @@ import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { app, BrowserWindow, Menu, ipcMain, nativeImage, net, protocol, session } from "electron";
-import { createDaemonCommandHandlers, registerDaemonManager } from "./daemon/daemon-manager.js";
+import { createDaemonCommandHandlers, registerDaemonManager, ensureDaemonRunning } from "./daemon/daemon-manager.js";
 import { parsePassthroughCliArgsFromArgv, runPassthroughCli } from "./daemon/cli/passthrough.js";
 import { closeAllTransportSessions } from "./daemon/local-transport.js";
 import {
@@ -381,7 +386,7 @@ async function createMainWindow(): Promise<void> {
     title,
     width: 1200,
     height: 800,
-    show: false,
+    show: true,  // Show immediately, don't wait for ready-to-show
     backgroundColor: getWindowBackgroundColor(systemTheme),
     ...(iconPath ? { icon: iconPath } : {}),
     ...getMainWindowChromeOptions({
@@ -491,12 +496,22 @@ async function createMainWindow(): Promise<void> {
   });
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
+    log.info("[main-window] ready-to-show fired");
   });
 
+  log.info("[main-window] isPackaged:", app.isPackaged, "DEV_SERVER_URL:", DEV_SERVER_URL);
+
   if (!app.isPackaged) {
-    const { loadReactDevTools } = await import("./features/react-devtools.js");
-    await loadReactDevTools();
+    try {
+      const { loadReactDevTools } = await import("./features/react-devtools.js");
+      await Promise.race([
+        loadReactDevTools(),
+        new Promise<void>((_, reject) => setTimeout(() => reject(new Error("timeout (10s)")), 10_000)),
+      ]);
+    } catch (err) {
+      log.warn("[react-devtools] failed to load, skipping:", err instanceof Error ? err.message : err);
+    }
+    log.info("[main-window] loading URL:", DEV_SERVER_URL);
     await mainWindow.loadURL(DEV_SERVER_URL);
     return;
   }
@@ -626,7 +641,24 @@ async function bootstrap(): Promise<void> {
     return;
   }
 
+  // inheritLoginShellEnv() may inject proxy env vars from the user's login shell
+  // (e.g. ICUBE_PROXY_HOST, http_proxy). Chromium reads these at startup and uses
+  // them for its network stack, which can prevent connections to localhost.
+  // Clear ALL proxy-related env vars here so Chromium uses direct connections.
+  for (const varName of [
+    "http_proxy", "https_proxy", "ftp_proxy", "ALL_PROXY", "all_proxy",
+    "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "no_proxy",
+    "ICUBE_PROXY_HOST", "ENV_PREVIEW_PROXY_ENABLED",
+  ]) {
+    delete process.env[varName];
+  }
+
   await app.whenReady();
+
+  // Set direct proxy mode for the default session. This is the only reliable way
+  // to ensure Chromium connects directly to localhost. Do NOT use command-line
+  // switches like --proxy-pac-url because they conflict with session-level settings.
+  await session.defaultSession.setProxy({ mode: "direct" });
 
   const appDistDir = getAppDistDir();
   protocol.handle(APP_SCHEME, (request) => {
@@ -666,6 +698,14 @@ async function bootstrap(): Promise<void> {
   registerDialogHandlers();
   registerNotificationHandlers();
   registerOpenerHandlers();
+
+  // Auto-start the desktop-managed daemon if it's not already running.
+  // This runs in the background so it doesn't block window creation.
+  ensureDaemonRunning().catch((error) => {
+    log.warn("[desktop daemon] auto-start failed, user can start manually", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 
   await createMainWindow();
 

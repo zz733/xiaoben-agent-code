@@ -36,10 +36,17 @@
     "prepack": "npm run build",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "start": "node dist/bin/relay-server.js",
+    "dev": "tsx watch src/bin/relay-server.ts"
+  },
+  "bin": {
+    "paseo-relay": "./dist/bin/relay-server.js"
   },
   "dependencies": {
     "base64-js": "^1.5.1",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
     "tweetnacl": "^1.0.3",
     "ws": "^8.14.2"
   },

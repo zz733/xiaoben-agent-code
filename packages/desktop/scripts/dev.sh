@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# TRAE SOLO CN IDE sets ELECTRON_FORCE_IS_PACKAGED=true, which makes
+# Electron think the app is packaged and skip the dev server URL.
+# CI=true makes Metro run in CI mode with no watch/reload.
+# Clear both immediately so they don't leak into any child processes.
+unset ELECTRON_FORCE_IS_PACKAGED
+export CI=false
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_DIR="$(cd "$DESKTOP_DIR/../app" && pwd)"
@@ -30,9 +37,10 @@ echo "  CDP:       http://127.0.0.1:${REMOTE_DEBUGGING_PORT}"
 echo "══════════════════════════════════════════════════════"
 
 # Launch Metro + Electron together, kill both on exit
+# Clear proxy env vars in case TRAE SOLO CN IDE sets them
 exec "$ROOT_DIR/node_modules/.bin/concurrently" \
   --kill-others \
   --names "metro,electron" \
   --prefix-colors "magenta,cyan" \
-  "cd '$APP_DIR' && PASEO_WEB_PLATFORM=electron npx expo start --port $EXPO_PORT" \
-  "$ROOT_DIR/node_modules/.bin/wait-on tcp:$EXPO_PORT && EXPO_DEV_URL=http://localhost:$EXPO_PORT electron '$DESKTOP_DIR'"
+  "cd '$APP_DIR' && CI=false PASEO_WEB_PLATFORM=electron npx expo start --port $EXPO_PORT" \
+  "$ROOT_DIR/node_modules/.bin/wait-on tcp:$EXPO_PORT 2>/dev/null && http_proxy= https_proxy= no_proxy= EXPO_DEV_URL=http://localhost:$EXPO_PORT '$ROOT_DIR/node_modules/.bin/electron' '$DESKTOP_DIR'"

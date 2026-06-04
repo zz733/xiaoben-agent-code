@@ -1004,7 +1004,7 @@ export class AgentManager {
 
   private async waitWithTimeout(options: TimeoutOptions): Promise<TimeoutResult> {
     let didTimeOut = false;
-    let timer: NodeJS.Timeout | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const operation = options.operation
       .then((): TimeoutResult => "completed")
       .catch((error) => {

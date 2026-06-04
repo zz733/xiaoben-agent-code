@@ -656,7 +656,7 @@ export class MockLoadTestAgentSession implements AgentSession {
     turn.timer = setTimeout(() => {
       this.tick(turn);
     }, delayMs);
-    turn.timer.unref?.();
+    (turn.timer as unknown as NodeJS.Timeout).unref?.();
   }
 
   private failConfiguredRewind(): void {
@@ -672,21 +672,21 @@ export class MockLoadTestAgentSession implements AgentSession {
     turn.timer = setTimeout(() => {
       this.emitLargePayloadTurn(turn, largePayload);
     }, 0);
-    turn.timer.unref?.();
+    (turn.timer as unknown as NodeJS.Timeout).unref?.();
   }
 
   private scheduleStressTurn(turn: ActiveTurn, stress: AgentStreamStressRequest): void {
     turn.timer = setTimeout(() => {
       this.emitStressTurn(turn, stress);
     }, 0);
-    turn.timer.unref?.();
+    (turn.timer as unknown as NodeJS.Timeout).unref?.();
   }
 
   private schedulePlanApprovalTurn(turn: ActiveTurn): void {
     turn.timer = setTimeout(() => {
       this.emitPlanApprovalTurn(turn);
     }, 0);
-    turn.timer.unref?.();
+    (turn.timer as unknown as NodeJS.Timeout).unref?.();
   }
 
   private emitPlanApprovalTurn(turn: ActiveTurn): void {
