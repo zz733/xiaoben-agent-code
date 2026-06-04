@@ -21,16 +21,36 @@ interface RelaySession {
   serverId: string;
   connections: Map<string, SessionConnection[]>; // connectionId -> sockets
   controlConnections: SessionConnection[]; // server control sockets
+  pendingFrames: Map<string, Array<Buffer>>; // connectionId -> 缓存的消息（等 server data socket 连接后发送）
 }
 
 interface SessionManagerOptions {
   logger: pino.Logger;
 }
 
-const PING_INTERVAL_MS = 5_000;
+const PING_INTERVAL_MS = 30_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+/** 安全地将 Buffer/Buffer[] 转为字符串 */
+function bufferToString(data: Buffer | Buffer[] | string): string | null {
+  if (typeof data === "string") return data;
+  if (Buffer.isBuffer(data)) return data.toString("utf8");
+  if (Array.isArray(data) && data.length > 0 && Buffer.isBuffer(data[0])) {
+    return Buffer.concat(data).toString("utf8");
+  }
+  return null;
+}
+
+/** 安全地解析 JSON，失败返回 null */
+function tryParseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /** 生成 connectionId，与 Cloudflare 版格式一致 */
@@ -79,18 +99,53 @@ export class RelaySessionManager {
     this.setupWebSocket(ws, connection, session, connectionKey);
 
     if (role === "server" && !connectionId) {
+      // 关闭旧的 server control 连接（与 Cloudflare 版一致：只保留一个 control 连接）
+      for (const oldConn of session.controlConnections) {
+        try {
+          oldConn.ws.close(1008, "Replaced by new connection");
+        } catch {
+          // ignore
+        }
+      }
+      session.controlConnections.length = 0;
+
       session.controlConnections.push(connection);
 
       // 发送初始 sync 消息，告知当前已有的客户端连接
       this.sendInitialSync(ws, session);
     } else {
+      // 关闭同 connectionId 的旧 server data socket（与 Cloudflare 版一致）
+      if (role === "server" && connectionId) {
+        const existing = session.connections.get(connectionKey);
+        if (existing) {
+          for (const oldConn of existing) {
+            if (oldConn.attachment.role === "server") {
+              try {
+                oldConn.ws.close(1008, "Replaced by new connection");
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+      }
+
       const connections = session.connections.get(connectionKey) || [];
       connections.push(connection);
       session.connections.set(connectionKey, connections);
 
-      // 客户端连接时，通知 daemon 的 control 连接
+      // 客户端连接时，只有当该 connectionId 还没有 server 连接时，才通知 daemon
       if (role === "client" && connectionId) {
-        this.notifyControls(session, { type: "connected", connectionId });
+        const existingConnections = session.connections.get(connectionKey) || [];
+        const hasServerConnection = existingConnections.some((c) => c.attachment.role === "server");
+        if (!hasServerConnection) {
+          this.notifyControls(session, { type: "connected", connectionId });
+        }
+      }
+
+      // server data socket 连接时，刷新该 connectionId 的缓存消息
+      if (role === "server" && connectionId) {
+        this.flushFrames(session, connectionId, ws);
       }
     }
 
@@ -146,6 +201,7 @@ export class RelaySessionManager {
         serverId,
         connections: new Map(),
         controlConnections: [],
+        pendingFrames: new Map(),
       };
       this.sessions.set(serverId, session);
     }
@@ -189,6 +245,42 @@ export class RelaySessionManager {
     }
   }
 
+  /** 缓存 client 消息，等 server data socket 连接后发送 */
+  private bufferFrame(session: RelaySession, connectionId: string, data: Buffer | Buffer[]): void {
+    const existing = session.pendingFrames.get(connectionId) ?? [];
+    // 将 Buffer/Buffer[] 转为可存储的格式
+    if (Buffer.isBuffer(data)) {
+      existing.push(data);
+    } else if (Array.isArray(data)) {
+      for (const part of data) {
+        if (Buffer.isBuffer(part)) {
+          existing.push(part);
+        }
+      }
+    }
+    // 防止内存无限增长
+    if (existing.length > 200) {
+      existing.splice(0, existing.length - 200);
+    }
+    session.pendingFrames.set(connectionId, existing);
+  }
+
+  /** server data socket 连接后，发送该 connectionId 的缓存消息 */
+  private flushFrames(session: RelaySession, connectionId: string, ws: WsWebSocket): void {
+    const frames = session.pendingFrames.get(connectionId);
+    if (!frames || frames.length === 0) return;
+    session.pendingFrames.delete(connectionId);
+    for (let i = 0; i < frames.length; i++) {
+      try {
+        ws.send(frames[i]);
+      } catch {
+        // 发送失败，重新缓存当前帧及剩余帧
+        this.bufferFrame(session, connectionId, frames.slice(i));
+        break;
+      }
+    }
+  }
+
   /** 处理 daemon 发来的 JSON ping（兼容旧版 daemon） */
   private handleControlKeepalive(ws: WsWebSocket, message: string): void {
     try {
@@ -226,23 +318,19 @@ export class RelaySessionManager {
     });
 
     ws.on("message", (data: Buffer | Buffer[]) => {
-      // control 连接（无 connectionId）处理 JSON ping/pong
       if (!connection.attachment.connectionId) {
-        if (typeof data === "string") {
-          this.handleControlKeepalive(ws, data);
-        } else {
-          try {
-            let str = "";
-            if (Buffer.isBuffer(data)) {
-              str = data.toString("utf8");
-            } else if (Array.isArray(data) && data.length > 0 && Buffer.isBuffer(data[0])) {
-              str = data[0].toString("utf8");
+        const text = bufferToString(data);
+        if (text) {
+          const parsed = tryParseJson(text);
+          if (isRecord(parsed)) {
+            if (parsed.type === "pong") {
+              connection.isAlive = true;
+              return;
             }
-            if (str) {
-              this.handleControlKeepalive(ws, str);
+            if (parsed.type === "ping") {
+              this.handleControlKeepalive(ws, text);
+              return;
             }
-          } catch {
-            // ignore
           }
         }
       }
@@ -299,11 +387,35 @@ export class RelaySessionManager {
           session.connections.delete(connectionKey);
         }
 
-        // 客户端断开时通知 daemon
+        // 客户端断开时通知 daemon，关闭对应的 server data socket，并清理缓存消息
         if (connection.attachment.role === "client") {
           const remaining = session.connections.get(connectionKey);
-          if (!remaining || remaining.length === 0) {
+          const remainingClients = remaining?.filter((c) => c.attachment.role === "client") ?? [];
+          if (remainingClients.length === 0) {
             this.notifyControls(session, { type: "disconnected", connectionId: connection.attachment.connectionId });
+            session.pendingFrames.delete(connectionKey);
+            // 关闭对应的 server data socket，让 daemon 端也断开
+            const serverRemaining = remaining?.filter((c) => c.attachment.role === "server") ?? [];
+            for (const serverConn of serverRemaining) {
+              try {
+                serverConn.ws.close(1001, "Client disconnected");
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+
+        // server data socket 断开时，关闭对应的 client 连接，让 App 端重连
+        if (connection.attachment.role === "server") {
+          const remaining = session.connections.get(connectionKey);
+          const clientConnections = remaining?.filter((c) => c.attachment.role === "client") ?? [];
+          for (const clientConn of clientConnections) {
+            try {
+              clientConn.ws.close(1012, "Server disconnected");
+            } catch {
+              // ignore
+            }
           }
         }
       }
@@ -320,35 +432,26 @@ export class RelaySessionManager {
     const { role, connectionId } = source.attachment;
 
     if (role === "client") {
-      // Client -> Server: 按 connectionId 路由到对应的 server data socket
       if (connectionId) {
         const connections = session.connections.get(connectionId);
-        if (connections) {
-          for (const connection of connections) {
-            if (connection.attachment.role === "server") {
-              try {
-                connection.ws.send(data);
-              } catch {
-                // ignore
-              }
+        const serverConnections = connections?.filter((c) => c.attachment.role === "server");
+        if (serverConnections && serverConnections.length > 0) {
+          for (const connection of serverConnections) {
+            try {
+              connection.ws.send(data);
+            } catch {
+              // ignore
             }
           }
-        }
-      }
-      // 同时也转发到 control 连接（兼容无 connectionId 的场景）
-      for (const connection of session.controlConnections) {
-        try {
-          connection.ws.send(data);
-        } catch {
-          // ignore
+        } else {
+          this.bufferFrame(session, connectionId, data);
         }
       }
       return;
     }
 
-    // Server -> Client: 按 connectionId 转发
+    // Server -> Client
     if (!connectionId) {
-      // control 连接广播到所有客户端
       for (const [, connections] of session.connections) {
         for (const connection of connections) {
           if (connection.attachment.role === "client") {
@@ -361,7 +464,6 @@ export class RelaySessionManager {
         }
       }
     } else {
-      // data 连接按 connectionId 转发到匹配的客户端
       const connections = session.connections.get(connectionId);
       if (connections) {
         for (const connection of connections) {
@@ -388,38 +490,21 @@ export class RelaySessionManager {
   }
 
   private pingAllConnections(session: RelaySession): void {
-    const allConnections: SessionConnection[] = [];
-
-    const seen = new Set<SessionConnection>();
+    // 只对 server control 连接做 isAlive 检测和 JSON ping：
+    // - control 连接（无 connectionId）处理 JSON ping/pong
+    // - data socket（有 connectionId）被 E2EE 层包裹，无法处理明文 JSON ping
+    // - client 连接（App）也使用 E2EE，无法处理明文 JSON ping
+    // - data/client 连接断开由 WebSocket close 事件处理
     for (const connection of session.controlConnections) {
-      if (!seen.has(connection)) {
-        seen.add(connection);
-        allConnections.push(connection);
-      }
-    }
-    for (const [, connections] of session.connections) {
-      for (const connection of connections) {
-        if (!seen.has(connection)) {
-          seen.add(connection);
-          allConnections.push(connection);
-        }
-      }
-    }
-
-    for (const connection of allConnections) {
       if (!connection.isAlive) {
         connection.ws.terminate();
         continue;
       }
       connection.isAlive = false;
       try {
-        connection.ws.ping();
+        connection.ws.send(JSON.stringify({ type: "ping", ts: Date.now() }));
       } catch {
-        try {
-          connection.ws.send(JSON.stringify({ type: "ping", ts: Date.now() }));
-        } catch {
-          // ignore
-        }
+        // ignore
       }
     }
   }
