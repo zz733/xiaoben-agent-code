@@ -228,10 +228,6 @@ export function startRelayTransport({
 
         const now = Date.now();
         const staleForMs = now - controlLastSeenAt;
-        // If the control socket is half-open or silently dropped, ws may never emit "close".
-        // Use a WebSocket protocol ping to detect staleness and force a reconnect.
-        // Cloudflare's runtime auto-responds to protocol pings at the edge without waking the
-        // hibernated relay Durable Object, so this keepalive does not incur DO CPU billing.
         if (staleForMs > CONTROL_STALE_TIMEOUT_MS) {
           relayLogger.warn(
             { url, staleForMs, connectionId, staleTimeoutMs: CONTROL_STALE_TIMEOUT_MS },
@@ -246,7 +242,7 @@ export function startRelayTransport({
         }
 
         try {
-          socket.ping();
+          socket.send(JSON.stringify({ type: "ping", ts: Date.now() }));
         } catch (error) {
           relayLogger.warn({ err: error, connectionId }, "relay_control_ping_send_failed");
           try {
@@ -257,7 +253,7 @@ export function startRelayTransport({
         }
       }, CONTROL_PING_INTERVAL_MS);
       try {
-        socket.ping();
+        socket.send(JSON.stringify({ type: "ping", ts: Date.now() }));
       } catch (error) {
         relayLogger.warn({ err: error, connectionId }, "relay_control_ping_send_failed");
         try {
