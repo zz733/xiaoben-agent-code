@@ -94,3 +94,5 @@ app.json
 config.js
 test-*.js
 test-*.mjs
+check-*.js
+nohup.out
