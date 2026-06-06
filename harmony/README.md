@@ -43,6 +43,7 @@ cd /path/to/xiaoben-agent-code
 ```
 
 脚本会自动：
+
 1. 构建 Web 版本（如果需要）
 2. 清空并复制资源到正确位置
 
@@ -77,8 +78,8 @@ cp -r packages/app/dist/* harmony/entry/src/main/resources/rawfile/
 
 ```typescript
 // 修改这两个常量
-const ONLINE_URL = 'https://your-server.com';
-const LOCAL_INDEX = 'resources/rawfile/index.html';
+const ONLINE_URL = "https://your-server.com";
+const LOCAL_INDEX = "resources/rawfile/index.html";
 ```
 
 ### 权限声明
@@ -90,6 +91,7 @@ const LOCAL_INDEX = 'resources/rawfile/index.html';
 ## Web 功能完整性
 
 Paseo Web 版本已支持：
+
 - ✅ 核心聊天功能（WebSocket）
 - ✅ 语音识别（Web Audio API + MediaStream）
 - ✅ 语音播放（AudioContext）

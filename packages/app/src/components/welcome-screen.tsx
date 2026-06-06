@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { QrCode, Link2, ClipboardPaste, ExternalLink, Settings } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useI18n } from "@/i18n";
 import type { HostProfile } from "@/types/host-connection";
 import { getHostRuntimeStore, isHostRuntimeConnected, useHosts } from "@/runtime/host-runtime";
 import { AddHostModal } from "./add-host-modal";
@@ -156,6 +157,7 @@ export interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
+  const { t } = useI18n();
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -206,7 +208,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
     ? [
         {
           key: "direct-connection",
-          label: "Direct connection",
+          label: t("welcome.directConnection"),
           testID: "welcome-direct-connection",
           primary: true,
           icon: Link2,
@@ -214,7 +216,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
         },
         {
           key: "paste-pairing-link",
-          label: "Paste pairing link",
+          label: t("welcome.pastePairingLink"),
           testID: "welcome-paste-pairing-link",
           primary: false,
           icon: ClipboardPaste,
@@ -224,7 +226,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
     : [
         {
           key: "scan-qr",
-          label: "Scan QR code",
+          label: t("welcome.scanQrCode"),
           testID: "welcome-scan-qr",
           primary: true,
           icon: QrCode,
@@ -232,7 +234,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
         },
         {
           key: "direct-connection",
-          label: "Direct connection",
+          label: t("welcome.directConnection"),
           testID: "welcome-direct-connection",
           primary: false,
           icon: Link2,
@@ -240,7 +242,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
         },
         {
           key: "paste-pairing-link",
-          label: "Paste pairing link",
+          label: t("welcome.pastePairingLink"),
           testID: "welcome-paste-pairing-link",
           primary: false,
           icon: ClipboardPaste,
@@ -288,7 +290,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
             style={styles.settingsButton}
             testID="welcome-open-settings"
           >
-            Settings
+            {t("welcome.settings")}
           </Button>
         </View>
         <Text style={styles.versionLabel}>{appVersionText}</Text>

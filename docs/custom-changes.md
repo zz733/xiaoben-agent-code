@@ -9,45 +9,45 @@
 
 ### 1. Relay 相关
 
-| 文件 | 改动说明 | 优先级 |
-|------|----------|--------|
-| `packages/relay/src/relay.ts` | 自建 relay 服务器配置 | 🔴 高 |
-| `packages/relay/relay-config.json` | relay 配置文件 | 🔴 高 |
-| `packages/relay/deploy-full.sh` | relay 部署脚本 | 🟡 中 |
+| 文件                               | 改动说明              | 优先级 |
+| ---------------------------------- | --------------------- | ------ |
+| `packages/relay/src/relay.ts`      | 自建 relay 服务器配置 | 🔴 高  |
+| `packages/relay/relay-config.json` | relay 配置文件        | 🔴 高  |
+| `packages/relay/deploy-full.sh`    | relay 部署脚本        | 🟡 中  |
 
 ### 2. 语音识别相关
 
-| 文件 | 改动说明 | 优先级 |
-|------|----------|--------|
-| `packages/server/src/server/speech/providers/local/sherpa/model-catalog.ts` | 中文语音模型配置 | 🔴 高 |
-| `packages/server/src/server/speech/providers/local/sherpa/sherpa-offline-recognizer.ts` | paraformer 模型类型支持 | 🔴 高 |
-| `packages/server/src/server/speech/providers/local/worker-process.ts` | 模型类型判断逻辑 | 🔴 高 |
+| 文件                                                                                    | 改动说明                | 优先级 |
+| --------------------------------------------------------------------------------------- | ----------------------- | ------ |
+| `packages/server/src/server/speech/providers/local/sherpa/model-catalog.ts`             | 中文语音模型配置        | 🔴 高  |
+| `packages/server/src/server/speech/providers/local/sherpa/sherpa-offline-recognizer.ts` | paraformer 模型类型支持 | 🔴 高  |
+| `packages/server/src/server/speech/providers/local/worker-process.ts`                   | 模型类型判断逻辑        | 🔴 高  |
 
 ### 3. 打包配置
 
-| 文件 | 改动说明 | 优先级 |
-|------|----------|--------|
-| `packages/desktop/electron-builder.yml` | macOS 打包配置 | 🟡 中 |
-| `packages/desktop/electron-builder-win.yml` | Windows 打包配置 | 🟡 中 |
+| 文件                                        | 改动说明         | 优先级 |
+| ------------------------------------------- | ---------------- | ------ |
+| `packages/desktop/electron-builder.yml`     | macOS 打包配置   | 🟡 中  |
+| `packages/desktop/electron-builder-win.yml` | Windows 打包配置 | 🟡 中  |
 
 ### 4. 鸿蒙 WebView 壳
 
-| 目录/文件 | 改动说明 | 优先级 |
-|-----------|----------|--------|
-| `harmony/` | 整个鸿蒙项目目录 | 🟢 低 |
-| `harmony/README.md` | 使用文档 | 🟢 低 |
-| `harmony/copy-web-assets.sh` | 资源复制脚本 | 🟢 低 |
+| 目录/文件                    | 改动说明         | 优先级 |
+| ---------------------------- | ---------------- | ------ |
+| `harmony/`                   | 整个鸿蒙项目目录 | 🟢 低  |
+| `harmony/README.md`          | 使用文档         | 🟢 低  |
+| `harmony/copy-web-assets.sh` | 资源复制脚本     | 🟢 低  |
 
 ### 5. 文档和脚本
 
-| 文件 | 改动说明 | 优先级 |
-|------|----------|--------|
-| `docs/upgrade-guide.md` | 升级维护指南 | 🟢 低 |
-| `scripts/deploy-relay.sh` | relay 部署脚本 | 🟡 中 |
-| `scripts/verify-upgrade.sh` | 验证脚本 | 🟢 低 |
-| `scripts/build-all.sh` | 完整打包脚本 | 🟢 低 |
-| `scripts/sync-upstream.sh` | 同步上游脚本 | 🟢 低 |
-| `scripts/restore-changes.sh` | 恢复改动脚本 | 🟢 低 |
+| 文件                         | 改动说明       | 优先级 |
+| ---------------------------- | -------------- | ------ |
+| `docs/upgrade-guide.md`      | 升级维护指南   | 🟢 低  |
+| `scripts/deploy-relay.sh`    | relay 部署脚本 | 🟡 中  |
+| `scripts/verify-upgrade.sh`  | 验证脚本       | 🟢 低  |
+| `scripts/build-all.sh`       | 完整打包脚本   | 🟢 低  |
+| `scripts/sync-upstream.sh`   | 同步上游脚本   | 🟢 低  |
+| `scripts/restore-changes.sh` | 恢复改动脚本   | 🟢 低  |
 
 ---
 
@@ -58,6 +58,7 @@
 **位置：** `~/Library/LaunchAgents/sh.paseo.daemon.plist`
 
 **关键环境变量：**
+
 ```xml
 <key>PASEO_DICTATION_ENABLED</key>
 <string>true</string>
@@ -76,6 +77,7 @@
 **位置：** `~/.paseo/models/local-speech/`
 
 **已安装模型：**
+
 - `funasr-nano-int8/` - 中文语音识别模型
 - `paraformer-zh-int8/` - Paraformer 中文模型
 
@@ -124,18 +126,19 @@ git push origin main --force
 
 当同步上游时遇到冲突，按以下优先级处理：
 
-| 类型 | 处理方式 |
-|------|----------|
-| 🔴 **高优先级改动** | **保留你的版本**（语音识别、relay） |
+| 类型                | 处理方式                                 |
+| ------------------- | ---------------------------------------- |
+| 🔴 **高优先级改动** | **保留你的版本**（语音识别、relay）      |
 | 🟡 **中优先级改动** | **手动合并**（打包配置，结合上游新特性） |
-| 🟢 **低优先级改动** | **可以重新生成**（文档、脚本） |
-| ⚪ **未改动的文件** | **使用上游版本** |
+| 🟢 **低优先级改动** | **可以重新生成**（文档、脚本）           |
+| ⚪ **未改动的文件** | **使用上游版本**                         |
 
 ---
 
 ## 五、快速恢复命令
 
 ### 查看你的改动
+
 ```bash
 # 查看相对于上游的所有改动
 git diff upstream/main --stat
@@ -145,6 +148,7 @@ git diff upstream/main -- packages/server/src/server/speech/providers/local/sher
 ```
 
 ### 恢复单个文件
+
 ```bash
 # 如果某个文件被上游覆盖了，从你的历史版本恢复
 git checkout HEAD~1 -- path/to/file
@@ -154,6 +158,7 @@ git checkout <commit-hash> -- path/to/file
 ```
 
 ### 恢复所有语音识别改动
+
 ```bash
 # 从最近的 commit 恢复语音识别相关文件
 git checkout fe32bede -- \

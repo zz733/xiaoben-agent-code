@@ -10,6 +10,7 @@ import { useProjectIconDataByProjectKey } from "@/projects/project-icons";
 import { settingsStyles } from "@/styles/settings";
 import { buildProjectSettingsRoute } from "@/utils/host-routes";
 import type { ProjectSummary } from "@/utils/projects";
+import { useI18n } from "@/i18n";
 
 interface ProjectsScreenProps {
   view: { kind: "projects" } | { kind: "project"; projectKey: string };
@@ -17,6 +18,7 @@ interface ProjectsScreenProps {
 
 export default function ProjectsScreen({ view }: ProjectsScreenProps) {
   const { projects, hostErrors, isLoading } = useProjects();
+  const { t } = useI18n();
   const selectedProjectKey = view.kind === "project" ? view.projectKey : null;
   const iconTargets = useMemo(
     () =>
@@ -49,7 +51,7 @@ export default function ProjectsScreen({ view }: ProjectsScreenProps) {
   if (projects.length === 0) {
     return (
       <View style={styles.centered} testID="projects-list">
-        <Text style={styles.emptyText}>No projects yet</Text>
+        <Text style={styles.emptyText}>{t("projects.noProjectsYet")}</Text>
       </View>
     );
   }

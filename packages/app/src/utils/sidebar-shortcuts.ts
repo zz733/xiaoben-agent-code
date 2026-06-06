@@ -57,7 +57,7 @@ export function buildStatusSidebarShortcutModel(input: {
   shortcutLimit?: number;
 }): SidebarShortcutModel {
   const maxShortcuts = Math.max(0, Math.floor(input.shortcutLimit ?? 9));
-  const groups = buildStatusGroups(input.workspaces, input.projectNamesByKey);
+  const groups = buildStatusGroups(input.workspaces, input.projectNamesByKey, (k) => k);
   const shortcutTargets: SidebarShortcutWorkspaceTarget[] = [];
   const shortcutIndexByWorkspaceKey = new Map<string, number>();
 

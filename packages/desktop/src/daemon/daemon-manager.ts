@@ -17,6 +17,7 @@ import {
   downloadAndInstallUpdate,
   type AppReleaseChannel,
 } from "../features/auto-updater.js";
+import { getCurrentLocale, setLocale, getAvailableLocales, type LocaleId } from "../i18n/locale.js";
 import { getCliInstallStatus, installCli } from "../integrations/cli-install/index.js";
 import {
   getSkillsStatus,
@@ -613,6 +614,13 @@ export function createDaemonCommandHandlers(): Record<string, DesktopCommandHand
     install_skills: () => installSkills(),
     update_skills: () => updateSkills(),
     uninstall_skills: () => uninstallSkills(),
+    i18n_get_locale: () => getCurrentLocale(),
+    i18n_set_locale: (args) => {
+      const locale = (args as { locale?: string })?.locale;
+      if (locale) setLocale(locale as LocaleId);
+      return getCurrentLocale();
+    },
+    i18n_get_available_locales: () => getAvailableLocales(),
   };
 }
 

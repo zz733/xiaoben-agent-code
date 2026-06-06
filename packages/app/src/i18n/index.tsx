@@ -55,8 +55,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback((newLocale: LocaleId) => {
     if (LOCALES[newLocale]) {
       setLocaleState(newLocale);
-      if (!isNative && window.paseoDesktop?.invoke) {
-        void window.paseoDesktop.invoke("paseo:i18n:setLocale", { locale: newLocale });
+      if (!isNative && window.paseoDesktop?.i18n) {
+        void window.paseoDesktop.i18n.setLocale(newLocale);
       }
     }
   }, []);

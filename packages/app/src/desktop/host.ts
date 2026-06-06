@@ -134,6 +134,11 @@ export interface DesktopHostBridge {
   webUtils?: DesktopWebUtilsBridge;
   menu?: DesktopMenuBridge;
   browser?: DesktopBrowserBridge;
+  i18n?: {
+    setLocale: (locale: string) => Promise<void>;
+    getLocale: () => Promise<string>;
+    getAvailableLocales: () => Promise<{ id: string; label: string }[]>;
+  };
 }
 
 declare global {

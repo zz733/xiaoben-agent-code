@@ -84,12 +84,13 @@ function getSttEngine(
   }
   const modelDir = getLocalSpeechModelDir(config.modelsDir, modelId);
   const isParaformer = modelId.includes("paraformer");
+  const isInt8 = modelId.includes("int8");
   const created = new SherpaOfflineRecognizerEngine(
     {
       model: isParaformer
         ? {
             kind: "paraformer",
-            model: `${modelDir}/model.onnx`,
+            model: isInt8 ? `${modelDir}/model.int8.onnx` : `${modelDir}/model.onnx`,
             tokens: `${modelDir}/tokens.txt`,
           }
         : {

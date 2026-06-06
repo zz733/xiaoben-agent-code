@@ -112,7 +112,11 @@ export class SherpaOfflineRecognizerEngine {
         : recognizerConfig.featConfig.sampleRate;
 
     this.logger.info(
-      { sampleRate: this.sampleRate, numThreads: recognizerConfig.modelConfig.numThreads, modelType: config.model.kind },
+      {
+        sampleRate: this.sampleRate,
+        numThreads: recognizerConfig.modelConfig.numThreads,
+        modelType: config.model.kind,
+      },
       "Sherpa offline recognizer initialized",
     );
   }

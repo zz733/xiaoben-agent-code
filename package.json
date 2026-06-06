@@ -113,6 +113,9 @@
     "release:minor": "npm run release:check && npm run version:all:minor && npm run release:publish && npm run release:push",
     "release:major": "npm run release:check && npm run version:all:major && npm run release:publish && npm run release:push"
   },
+  "dependencies": {
+    "expo-localization": "~17.0.9"
+  },
   "devDependencies": {
     "@types/ws": "^8.5.14",
     "@typescript/native-preview": "7.0.0-dev.20260423.1",

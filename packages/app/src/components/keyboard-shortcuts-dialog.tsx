@@ -7,13 +7,14 @@ import { Shortcut } from "@/components/ui/shortcut";
 import { useKeyboardShortcutsStore } from "@/stores/keyboard-shortcuts-store";
 import { getShortcutOs } from "@/utils/shortcut-platform";
 import { buildKeyboardShortcutHelpSections } from "@/keyboard/keyboard-shortcuts";
+import { useI18n } from "@/i18n";
 
 const SNAP_POINTS: string[] = ["70%", "92%"];
-const SHORTCUTS_HEADER: SheetHeader = { title: "Shortcuts" };
 
 export function KeyboardShortcutsDialog() {
   const open = useKeyboardShortcutsStore((s) => s.shortcutsDialogOpen);
   const setOpen = useKeyboardShortcutsStore((s) => s.setShortcutsDialogOpen);
+  const { t } = useI18n();
 
   const isMac = getShortcutOs() === "mac";
   const isDesktopApp = getIsElectronRuntime();
@@ -23,10 +24,11 @@ export function KeyboardShortcutsDialog() {
   );
 
   const handleClose = useCallback(() => setOpen(false), [setOpen]);
+  const header = useMemo<SheetHeader>(() => ({ title: t("shortcuts.title") }), [t]);
 
   return (
     <AdaptiveModalSheet
-      header={SHORTCUTS_HEADER}
+      header={header}
       visible={open}
       onClose={handleClose}
       testID="keyboard-shortcuts-dialog"
@@ -35,12 +37,12 @@ export function KeyboardShortcutsDialog() {
       <View testID="keyboard-shortcuts-dialog-content" style={styles.content}>
         {sections.map((section) => (
           <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.sectionTitle}>{t(section.title)}</Text>
             <View style={styles.rows}>
               {section.rows.map((row) => (
                 <View key={row.id} style={styles.row}>
                   <View style={styles.rowText}>
-                    <Text style={styles.rowLabel}>{row.label}</Text>
+                    <Text style={styles.rowLabel}>{t(row.label)}</Text>
                     {row.note ? <Text style={styles.rowNote}>{row.note}</Text> : null}
                   </View>
                   <Shortcut keys={row.keys} style={styles.rowShortcut} />

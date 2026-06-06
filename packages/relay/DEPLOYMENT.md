@@ -5,6 +5,7 @@
 本指南帮助你在自己的服务器上部署 Paseo Relay 服务器，替代 Cloudflare 托管版本。
 
 **服务器信息：**
+
 - 目标服务器：`root@weixin.52iptv.net`
 - 默认端口：`8080`
 - 协议：支持 v1 和 v2 relay 协议
@@ -24,6 +25,7 @@ chmod +x deploy.sh
 ```
 
 脚本会自动完成：
+
 - ✅ 编译 relay 服务器代码
 - ✅ 打包并上传到服务器
 - ✅ 安装 systemd 服务
@@ -342,13 +344,13 @@ packages/relay/
 
 ### 自托管 vs Cloudflare
 
-| 特性 | 自托管 | Cloudflare |
-|------|--------|------------|
-| 部署位置 | 你的服务器 | Cloudflare Workers |
-| 成本 | 服务器成本 | 免费额度内免费 |
-| 控制 | 完全控制 | 受限于 CF 平台 |
-| 扩展性 | 需要手动扩展 | 自动扩展 |
-| 延迟 | 取决于服务器位置 | 全球 CDN 边缘 |
+| 特性     | 自托管           | Cloudflare         |
+| -------- | ---------------- | ------------------ |
+| 部署位置 | 你的服务器       | Cloudflare Workers |
+| 成本     | 服务器成本       | 免费额度内免费     |
+| 控制     | 完全控制         | 受限于 CF 平台     |
+| 扩展性   | 需要手动扩展     | 自动扩展           |
+| 延迟     | 取决于服务器位置 | 全球 CDN 边缘      |
 
 ### 工作原理
 
@@ -375,6 +377,7 @@ packages/relay/
 ```
 
 **关键点：**
+
 - Relay 服务器只转发字节流，**无法解密**任何消息
 - 所有消息使用 E2E 加密（Curve25519 + XSalsa20-Poly1305）
 - 即使服务器被攻破，攻击者也无法读取或篡改消息内容
@@ -391,6 +394,7 @@ cd packages/relay
 ```
 
 脚本会自动：
+
 - 备份旧版本
 - 上传新版本
 - 重启服务
@@ -401,6 +405,7 @@ cd packages/relay
 ## 支持
 
 如有问题，请检查：
+
 1. 服务器日志：`journalctl -u paseo-relay -f`
 2. Daemon 日志：`$PASEO_HOME/daemon.log`
 3. 网络连接：`curl http://weixin.52iptv.net:8080/health`

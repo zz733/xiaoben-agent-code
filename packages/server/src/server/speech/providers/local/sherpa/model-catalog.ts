@@ -47,8 +47,7 @@ export const SHERPA_ONNX_MODEL_CATALOG = {
       "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-funasr-nano-int8-2025-12-30.tar.bz2",
     extractedDir: "sherpa-onnx-funasr-nano-int8-2025-12-30",
     requiredFiles: ["model.onnx", "tokens.txt"],
-    description:
-      "FunASR Nano (Chinese, English, Japanese, 7 Chinese dialects, auto-detected).",
+    description: "FunASR Nano (Chinese, English, Japanese, 7 Chinese dialects, auto-detected).",
   },
   "cohere-transcribe-14-lang-int8": {
     kind: "stt-offline",

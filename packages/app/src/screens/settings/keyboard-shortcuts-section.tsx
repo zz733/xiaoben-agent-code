@@ -22,15 +22,18 @@ import { useKeyboardShortcutsStore } from "@/stores/keyboard-shortcuts-store";
 import { getShortcutOs } from "@/utils/shortcut-platform";
 import { getIsElectronRuntime } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
+import { useI18n } from "@/i18n";
 
 const EMPTY_CAPTURED_COMBOS: string[] = [];
 
 function ShortcutSequence({
   chord,
   heldModifiers,
+  t,
 }: {
   chord: string[] | null;
   heldModifiers: string | null;
+  t: (key: string) => string;
 }) {
   const displayChord = useMemo(() => {
     const combos = [...(chord ?? [])];
@@ -41,7 +44,7 @@ function ShortcutSequence({
   }, [chord, heldModifiers]);
 
   if ((!chord || chord.length === 0) && !heldModifiers) {
-    return <Text style={styles.capturingText}>Press shortcut...</Text>;
+    return <Text style={styles.capturingText}>{t("shortcuts.pressShortcut")}</Text>;
   }
 
   return <Shortcut chord={displayChord} />;
@@ -71,7 +74,8 @@ function ShortcutRowContainer({
   onSaveCapture,
   onCancelCapture,
   onRemoveOverride,
-}: ShortcutRowContainerProps) {
+  t,
+}: ShortcutRowContainerProps & { t: (key: string) => string }) {
   const handleRebind = useCallback(() => {
     if (bindingId) onStartCapture(bindingId);
   }, [bindingId, onStartCapture]);
@@ -92,6 +96,7 @@ function ShortcutRowContainer({
       onDone={onSaveCapture}
       onCancel={onCancelCapture}
       onReset={handleReset}
+      t={t}
     />
   );
 }
@@ -107,6 +112,7 @@ function ShortcutRow({
   onDone,
   onCancel,
   onReset,
+  t,
 }: {
   row: KeyboardShortcutHelpRow;
   bindingId: string | null;
@@ -118,6 +124,7 @@ function ShortcutRow({
   onDone: () => void;
   onCancel: () => void;
   onReset: () => void;
+  t: (key: string) => string;
 }) {
   const displayChord = useMemo(
     () => (overrideCombo ? chordStringToShortcutKeys(overrideCombo) : [row.keys]),
@@ -127,10 +134,10 @@ function ShortcutRow({
 
   return (
     <View style={rowStyle}>
-      <Text style={styles.rowLabel}>{row.label}</Text>
+      <Text style={styles.rowLabel}>{t(row.label)}</Text>
       <View style={styles.rowActions}>
         {isCapturing ? (
-          <ShortcutSequence chord={capturedCombos} heldModifiers={heldModifiers} />
+          <ShortcutSequence chord={capturedCombos} heldModifiers={heldModifiers} t={t} />
         ) : (
           <Shortcut chord={displayChord} />
         )}
@@ -142,7 +149,7 @@ function ShortcutRow({
               </Button>
             ) : null}
             <Button variant="ghost" size="sm" onPress={isCapturing ? onCancel : onRebind}>
-              {isCapturing ? "Cancel" : "Rebind"}
+              {isCapturing ? t("addHost.cancel") : t("shortcuts.rebind")}
             </Button>
           </>
         )}
@@ -163,6 +170,7 @@ export function KeyboardShortcutsSection() {
   const { overrides, hasOverrides, setOverride, removeOverride, resetAll } =
     useKeyboardShortcutOverrides();
   const setCapturingShortcut = useKeyboardShortcutsStore((s) => s.setCapturingShortcut);
+  const { t } = useI18n();
 
   const isFocused = useIsFocused();
   const isMac = getShortcutOs() === "mac";
@@ -244,9 +252,9 @@ export function KeyboardShortcutsSection() {
 
   if (isNative) {
     return (
-      <SettingsSection title="Shortcuts">
+      <SettingsSection title={t("shortcuts.shortcuts")}>
         <View style={mobileCardStyle}>
-          <Text style={styles.mobileText}>Keyboard shortcuts are only available on desktop</Text>
+          <Text style={styles.mobileText}>{t("shortcuts.desktopOnly")}</Text>
         </View>
       </SettingsSection>
     );
@@ -254,7 +262,7 @@ export function KeyboardShortcutsSection() {
 
   const resetAllButton = hasOverrides ? (
     <Button variant="ghost" size="sm" onPress={handleResetAll}>
-      Reset all
+      {t("shortcuts.resetAll")}
     </Button>
   ) : undefined;
 
@@ -264,7 +272,7 @@ export function KeyboardShortcutsSection() {
         return (
           <SettingsSection
             key={section.id}
-            title={section.title}
+            title={t(section.title)}
             trailing={sectionIndex === 0 ? resetAllButton : undefined}
           >
             <View style={settingsStyles.card}>
@@ -290,6 +298,7 @@ export function KeyboardShortcutsSection() {
                       onSaveCapture={saveCapture}
                       onCancelCapture={cancelCapture}
                       onRemoveOverride={handleRemoveOverride}
+                      t={t}
                     />
                     {index < section.rows.length - 1 && <View style={styles.separator} />}
                   </View>

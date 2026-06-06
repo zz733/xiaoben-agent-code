@@ -7,9 +7,11 @@ import { DesktopPermissionRow } from "@/desktop/components/desktop-permission-ro
 import { useDesktopPermissions } from "@/desktop/permissions/use-desktop-permissions";
 import { settingsStyles } from "@/styles/settings";
 import { SettingsSection } from "@/screens/settings/settings-section";
+import { useI18n } from "@/i18n";
 
 export function DesktopPermissionsSection() {
   const { theme } = useUnistyles();
+  const { t } = useI18n();
   const {
     isDesktopApp,
     snapshot,
@@ -59,12 +61,12 @@ export function DesktopPermissionsSection() {
         leftIcon={refreshIcon}
         onPress={handleRefreshPress}
         disabled={isBusy}
-        accessibilityLabel="Refresh desktop permissions"
+        accessibilityLabel={t("permissions.refreshAccessibility")}
       >
-        {isRefreshing ? "Refreshing..." : "Refresh"}
+        {isRefreshing ? t("permissions.refreshing") : t("permissions.refresh")}
       </Button>
     ),
-    [refreshIcon, handleRefreshPress, isBusy, isRefreshing],
+    [refreshIcon, handleRefreshPress, isBusy, isRefreshing, t],
   );
 
   if (!isDesktopApp) {
@@ -72,21 +74,21 @@ export function DesktopPermissionsSection() {
   }
 
   return (
-    <SettingsSection title="Permissions" trailing={refreshButton}>
+    <SettingsSection title={t("permissions.title")} trailing={refreshButton}>
       <View style={settingsStyles.card}>
         <DesktopPermissionRow
-          title="Notifications"
+          title={t("permissions.notifications")}
           status={snapshot?.notifications ?? null}
           isRequesting={requestingPermission === "notifications"}
           onRequest={handleRequestNotifications}
-          extraActionLabel="Test"
+          extraActionLabel={t("permissions.test")}
           isExtraActionBusy={isSendingTestNotification}
           isExtraActionDisabled={!notificationsGranted || isBusy}
           onExtraAction={handleSendTestNotification}
         />
         {testNotificationError ? <Text style={errorTextStyle}>{testNotificationError}</Text> : null}
         <DesktopPermissionRow
-          title="Microphone"
+          title={t("permissions.microphone")}
           showBorder
           status={snapshot?.microphone ?? null}
           isRequesting={requestingPermission === "microphone"}

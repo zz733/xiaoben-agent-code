@@ -1,6 +1,7 @@
 # Paseo 升级维护指南
 
 本文档确保升级源码后，以下三个核心功能正常运行：
+
 1. **Relay 服务** (relay.17ai.pro)
 2. **语音识别** (本地 sherpa-onnx)
 3. **桌面应用打包** (macOS/Windows)
@@ -69,10 +70,10 @@ curl -v https://relay.17ai.pro/health
 
 ### 1.5 常见问题
 
-| 问题 | 解决方案 |
-|------|----------|
-| 连接超时 | 检查 TLS 证书是否过期 |
-| 认证失败 | 检查 auth token 配置 |
+| 问题       | 解决方案                      |
+| ---------- | ----------------------------- |
+| 连接超时   | 检查 TLS 证书是否过期         |
+| 认证失败   | 检查 auth token 配置          |
 | 版本不兼容 | 确保 relay 和 daemon 版本匹配 |
 
 ---
@@ -158,12 +159,14 @@ npm run build:server
 ### 3.1 打包命令
 
 **macOS：**
+
 ```bash
 npm run build:desktop
 # 输出：packages/desktop/release/mac-arm64/Paseo.app
 ```
 
 **Windows：**
+
 ```bash
 cd packages/desktop
 npx electron-builder --config electron-builder-win.yml --win --x64
@@ -264,12 +267,12 @@ echo "=== 验证完成 ==="
 
 ## 五、版本兼容性矩阵
 
-| 组件 | 当前版本 | 兼容要求 |
-|------|----------|----------|
-| Node.js | 18.x+ | 必须 |
-| sherpa-onnx-node | 1.12.28 | 与模型匹配 |
-| Electron | 34.x | 与 macOS/Windows 兼容 |
-| Relay Protocol | v1 | client/daemon/relay 三方一致 |
+| 组件             | 当前版本 | 兼容要求                     |
+| ---------------- | -------- | ---------------------------- |
+| Node.js          | 18.x+    | 必须                         |
+| sherpa-onnx-node | 1.12.28  | 与模型匹配                   |
+| Electron         | 34.x     | 与 macOS/Windows 兼容        |
+| Relay Protocol   | v1       | client/daemon/relay 三方一致 |
 
 ---
 
@@ -324,7 +327,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:

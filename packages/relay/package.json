@@ -2,6 +2,9 @@
   "name": "@getpaseo/relay",
   "version": "0.1.91-beta.2",
   "description": "Paseo relay for bridging daemon and client connections",
+  "bin": {
+    "paseo-relay": "./dist/bin/relay-server.js"
+  },
   "files": [
     "dist",
     "!dist/**/*.map"
@@ -41,9 +44,6 @@
     "test:watch": "vitest",
     "start": "node dist/bin/relay-server.js",
     "dev": "tsx watch src/bin/relay-server.ts"
-  },
-  "bin": {
-    "paseo-relay": "./dist/bin/relay-server.js"
   },
   "dependencies": {
     "base64-js": "^1.5.1",

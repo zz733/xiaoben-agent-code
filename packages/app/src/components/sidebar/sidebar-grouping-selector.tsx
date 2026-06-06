@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Text, View, type PressableStateCallbackType } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { Settings2 } from "lucide-react-native";
@@ -10,21 +10,32 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useSidebarViewStore, type SidebarGroupMode } from "@/stores/sidebar-view-store";
+import { useI18n } from "@/i18n";
 import { isWeb as platformIsWeb } from "@/constants/platform";
 
 const ThemedSettings2 = withUnistyles(Settings2);
 const filterColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 
-const GROUP_MODE_ITEMS: Array<{ value: SidebarGroupMode; label: string }> = [
-  { value: "project", label: "Project" },
-  { value: "status", label: "Status" },
+const GROUP_MODE_KEYS: Array<{ value: SidebarGroupMode; labelKey: string }> = [
+  { value: "project", labelKey: "sidebar.grouping.project" },
+  { value: "status", labelKey: "sidebar.grouping.status" },
 ];
 
 export function SidebarGroupingSelector({ serverId }: { serverId: string | null }) {
+  const { t } = useI18n();
   const groupMode = useSidebarViewStore((state) =>
     serverId ? state.getGroupMode(serverId) : "project",
   );
   const setGroupMode = useSidebarViewStore((state) => state.setGroupMode);
+
+  const groupModeItems = useMemo(
+    () =>
+      GROUP_MODE_KEYS.map((item) => ({
+        value: item.value,
+        label: t(item.labelKey),
+      })),
+    [t],
+  );
 
   const handleSelect = useCallback(
     (mode: SidebarGroupMode) => {
@@ -54,9 +65,9 @@ export function SidebarGroupingSelector({ serverId }: { serverId: string | null 
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" width={180} testID="sidebar-grouping-menu">
         <View style={styles.menuHeader}>
-          <Text style={styles.menuHeaderLabel}>Group by</Text>
+          <Text style={styles.menuHeaderLabel}>{t("sidebar.grouping.groupBy")}</Text>
         </View>
-        {GROUP_MODE_ITEMS.map((item) => (
+        {groupModeItems.map((item) => (
           <GroupModeMenuItem
             key={item.value}
             item={item}

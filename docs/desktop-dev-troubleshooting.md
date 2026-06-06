@@ -8,10 +8,10 @@
 
 TRAE SOLO CN IDE 在环境中设置了以下两个环境变量：
 
-| 环境变量 | 值 | 影响 |
-|---------|-----|------|
+| 环境变量                     | 值     | 影响                                                            |
+| ---------------------------- | ------ | --------------------------------------------------------------- |
 | `ELECTRON_FORCE_IS_PACKAGED` | `true` | 强制 Electron 认为 app 是打包状态，`app.isPackaged` 返回 `true` |
-| `CI` | `true` | Metro 以 CI 模式运行，禁用热重载 |
+| `CI`                         | `true` | Metro 以 CI 模式运行，禁用热重载                                |
 
 ### `ELECTRON_FORCE_IS_PACKAGED` 的影响
 
@@ -30,10 +30,10 @@ bool App::IsPackaged() {
 
 ```typescript
 // 开发模式（isPackaged = false）
-await mainWindow.loadURL(DEV_SERVER_URL);  // http://localhost:8081
+await mainWindow.loadURL(DEV_SERVER_URL); // http://localhost:8081
 
 // 生产模式（isPackaged = true）
-await mainWindow.loadURL(`${APP_SCHEME}://app/`);  // paseo://app/
+await mainWindow.loadURL(`${APP_SCHEME}://app/`); // paseo://app/
 ```
 
 生产模式需要 `paseo://` 协议处理器从 `app-dist` 目录提供文件，但开发环境下该目录不存在，导致 `ERR_FILE_NOT_FOUND` 错误。
@@ -41,6 +41,7 @@ await mainWindow.loadURL(`${APP_SCHEME}://app/`);  // paseo://app/
 ### `CI=true` 的影响
 
 Metro Bundler 检测到 `CI=true` 时会输出：
+
 ```
 Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
 ```
@@ -81,12 +82,12 @@ app.on('ready', () => {
 
 ## 相关代码位置
 
-| 文件 | 说明 |
-|------|------|
-| `packages/desktop/scripts/dev.sh` | 开发启动脚本（已修复） |
-| `packages/desktop/src/main.ts:497-504` | `app.isPackaged` 判断分支 |
+| 文件                                   | 说明                       |
+| -------------------------------------- | -------------------------- |
+| `packages/desktop/scripts/dev.sh`      | 开发启动脚本（已修复）     |
+| `packages/desktop/src/main.ts:497-504` | `app.isPackaged` 判断分支  |
 | `packages/desktop/src/main.ts:325-331` | `getAppDistDir()` 路径解析 |
-| `packages/desktop/src/main.ts:632-656` | `paseo://` 协议处理器 |
+| `packages/desktop/src/main.ts:632-656` | `paseo://` 协议处理器      |
 
 ## Electron `isPackaged` 判断逻辑
 

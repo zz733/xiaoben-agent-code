@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatConnectionStatus } from "@/utils/daemons";
+import { useI18n } from "@/i18n";
 import type { WorkspaceRouteState } from "@/screens/workspace/workspace-route-state";
 
 interface WorkspaceRouteStateActions {
@@ -43,9 +44,10 @@ export function renderWorkspaceRouteGate(input: {
 
 function getWorkspaceHostStateTitle(
   state: Extract<WorkspaceRouteState, { kind: "unreachable" }>,
+  t: (key: string) => string,
 ): string {
   if (state.connectionStatus === "connecting" || state.connectionStatus === "idle") {
-    return "Connecting";
+    return t("workspace.connecting");
   }
   if (state.connectionStatus === "offline") {
     return `${state.hostName} is offline`;
@@ -54,13 +56,14 @@ function getWorkspaceHostStateTitle(
 }
 
 function WorkspaceConnecting({ hostName }: { hostName: string }) {
+  const { t } = useI18n();
   const { theme } = useUnistyles();
 
   return (
     <View style={styles.emptyState}>
       <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />
       <View style={styles.textStack}>
-        <Text style={styles.title}>Loading workspace</Text>
+        <Text style={styles.title}>{t("workspace.loading")}</Text>
         <Text style={styles.description}>{hostName}</Text>
       </View>
     </View>
@@ -76,6 +79,7 @@ function WorkspaceUnreachable({
   onRetry: () => void;
   onManageHost: () => void;
 }) {
+  const { t } = useI18n();
   const { theme } = useUnistyles();
   const canRetry = state.connectionStatus === "offline" || state.connectionStatus === "error";
 
@@ -85,7 +89,7 @@ function WorkspaceUnreachable({
         <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />
       ) : null}
       <View style={styles.textStack}>
-        <Text style={styles.title}>{getWorkspaceHostStateTitle(state)}</Text>
+        <Text style={styles.title}>{getWorkspaceHostStateTitle(state, t)}</Text>
         <Text style={styles.description}>
           {state.connectionStatus === "connecting" || state.connectionStatus === "idle"
             ? state.hostName
@@ -107,10 +111,10 @@ function WorkspaceUnreachable({
       {canRetry ? (
         <View style={styles.actions}>
           <Button size="sm" variant="default" leftIcon={RotateCw} onPress={onRetry}>
-            Retry
+            {t("workspace.retry")}
           </Button>
           <Button size="sm" variant="outline" leftIcon={Settings} onPress={onManageHost}>
-            Manage host
+            {t("workspace.manageHost")}
           </Button>
         </View>
       ) : null}
@@ -119,15 +123,16 @@ function WorkspaceUnreachable({
 }
 
 function WorkspaceMissing({ hostName, onDismiss }: { hostName: string; onDismiss: () => void }) {
+  const { t } = useI18n();
   return (
     <View style={styles.emptyState}>
       <View style={styles.textStack}>
-        <Text style={styles.title}>Workspace not found</Text>
+        <Text style={styles.title}>{t("workspace.notFound")}</Text>
         <Text style={styles.description}>{hostName}</Text>
       </View>
       <View style={styles.actions}>
         <Button size="sm" variant="default" leftIcon={ArrowLeftToLine} onPress={onDismiss}>
-          Back
+          {t("settings.back")}
         </Button>
       </View>
     </View>

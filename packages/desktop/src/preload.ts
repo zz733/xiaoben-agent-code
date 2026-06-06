@@ -81,4 +81,9 @@ contextBridge.exposeInMainWorld("paseoDesktop", {
     clearPartition: (browserId: string) =>
       ipcRenderer.invoke("paseo:browser:clear-partition", browserId),
   },
+  i18n: {
+    getLocale: () => ipcRenderer.invoke("paseo:i18n:getLocale"),
+    setLocale: (locale: string) => ipcRenderer.invoke("paseo:i18n:setLocale", locale),
+    getAvailableLocales: () => ipcRenderer.invoke("paseo:i18n:getAvailableLocales"),
+  },
 });

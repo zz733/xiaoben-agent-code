@@ -392,7 +392,10 @@ export class RelaySessionManager {
           const remaining = session.connections.get(connectionKey);
           const remainingClients = remaining?.filter((c) => c.attachment.role === "client") ?? [];
           if (remainingClients.length === 0) {
-            this.notifyControls(session, { type: "disconnected", connectionId: connection.attachment.connectionId });
+            this.notifyControls(session, {
+              type: "disconnected",
+              connectionId: connection.attachment.connectionId,
+            });
             session.pendingFrames.delete(connectionKey);
             // 关闭对应的 server data socket，让 daemon 端也断开
             const serverRemaining = remaining?.filter((c) => c.attachment.role === "server") ?? [];
@@ -428,7 +431,11 @@ export class RelaySessionManager {
     }
   }
 
-  private forwardMessage(source: SessionConnection, session: RelaySession, data: Buffer | Buffer[]): void {
+  private forwardMessage(
+    source: SessionConnection,
+    session: RelaySession,
+    data: Buffer | Buffer[],
+  ): void {
     const { role, connectionId } = source.attachment;
 
     if (role === "client") {

@@ -85,7 +85,10 @@ async function main(): Promise<void> {
   const options = parseArgs();
   const logger = createLogger({ level: options.logLevel });
 
-  logger.info({ port: options.port, host: options.host, logLevel: options.logLevel }, "starting_relay_server");
+  logger.info(
+    { port: options.port, host: options.host, logLevel: options.logLevel },
+    "starting_relay_server",
+  );
 
   const relay = createSelfHostedRelay({
     port: options.port,

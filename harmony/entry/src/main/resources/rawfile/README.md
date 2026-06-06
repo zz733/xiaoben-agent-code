@@ -5,6 +5,7 @@
 ## 复制资源步骤
 
 1. 在 Paseo 项目根目录构建 Web 版本：
+
    ```bash
    cd /path/to/xiaoben-agent-code
    npm run build:web

@@ -31,9 +31,7 @@ import type { HostConnection, HostProfile } from "@/types/host-connection";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { formatConnectionStatus, getConnectionStatusTone } from "@/utils/daemons";
 import { formatLatency } from "@/utils/latency";
-
-const RESTART_CONFIRMATION_MESSAGE =
-  "This will restart the daemon. Agents running on it will keep going; the app will reconnect automatically.";
+import { useI18n } from "@/i18n";
 
 function formatHostConnectionLabel(connection: HostConnection): string {
   if (connection.type === "relay") {
@@ -48,18 +46,19 @@ function formatHostConnectionLabel(connection: HostConnection): string {
 function formatActiveConnectionBadge(
   activeConnection: { type: HostConnection["type"]; display: string } | null,
   theme: ReturnType<typeof useUnistyles>["theme"],
+  t: (key: string) => string,
 ): { icon: React.ReactNode; text: string } | null {
   if (!activeConnection) return null;
   if (activeConnection.type === "relay") {
     return {
       icon: <Globe size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />,
-      text: "Relay",
+      text: t("hostPage.relay"),
     };
   }
   if (activeConnection.type === "directSocket" || activeConnection.type === "directPipe") {
     return {
       icon: <Monitor size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />,
-      text: "Local",
+      text: t("hostPage.local"),
     };
   }
   return {
@@ -82,10 +81,11 @@ function useHostProfile(serverId: string): HostProfile | null {
 }
 
 function HostNotFound() {
+  const { t } = useI18n();
   return (
     <View>
       <View style={EMPTY_CARD_STYLE}>
-        <Text style={styles.emptyText}>Host not found</Text>
+        <Text style={styles.emptyText}>{t("hostPage.hostNotFound")}</Text>
       </View>
     </View>
   );
@@ -93,6 +93,7 @@ function HostNotFound() {
 
 function HostStatusBadges({ serverId }: { serverId: string }) {
   const { theme } = useUnistyles();
+  const { t } = useI18n();
   const snapshot = useHostRuntimeSnapshot(serverId);
   const daemonVersion = useSessionStore(
     (state) => state.sessions[serverId]?.serverInfo?.version ?? null,
@@ -122,7 +123,7 @@ function HostStatusBadges({ serverId }: { serverId: string }) {
   } else {
     statusPillBg = "rgba(161, 161, 170, 0.1)";
   }
-  const connectionBadge = formatActiveConnectionBadge(activeConnection, theme);
+  const connectionBadge = formatActiveConnectionBadge(activeConnection, theme, t);
   const versionBadgeText = formatDaemonVersionBadge(daemonVersion);
 
   const statusPillStyle = useMemo(
@@ -172,6 +173,7 @@ function HostConnectionError({ serverId }: { serverId: string }) {
 export function HostConnectionsPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
   const isLocalDaemon = useIsLocalDaemon(serverId);
+  const { t } = useI18n();
 
   if (!host) {
     return <HostNotFound />;
@@ -182,7 +184,7 @@ export function HostConnectionsPage({ serverId }: { serverId: string }) {
       <HostConnectionError serverId={serverId} />
       <ConnectionsSection host={host} />
       {isLocalDaemon ? (
-        <SettingsSection title="Pair devices">
+        <SettingsSection title={t("hostPage.pairDevices")}>
           <PairDeviceRow />
         </SettingsSection>
       ) : null}
@@ -193,6 +195,7 @@ export function HostConnectionsPage({ serverId }: { serverId: string }) {
 export function HostAgentsPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
   const isConnected = useHostRuntimeIsConnected(serverId);
+  const { t } = useI18n();
 
   if (!host) {
     return <HostNotFound />;
@@ -201,13 +204,13 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
   return (
     <View>
       {isConnected ? (
-        <SettingsSection title="Agents">
+        <SettingsSection title={t("hostPage.agents")}>
           <InjectPaseoToolsCard serverId={serverId} />
           <AppendSystemPromptCard serverId={serverId} />
         </SettingsSection>
       ) : (
         <View style={EMPTY_CARD_STYLE}>
-          <Text style={styles.emptyText}>Connect to this host to manage agents</Text>
+          <Text style={styles.emptyText}>{t("hostPage.connectToManageAgents")}</Text>
         </View>
       )}
     </View>
@@ -217,6 +220,7 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
 export function HostWorkspacesPage({ serverId }: { serverId: string }) {
   const host = useHostProfile(serverId);
   const isConnected = useHostRuntimeIsConnected(serverId);
+  const { t } = useI18n();
 
   if (!host) {
     return <HostNotFound />;
@@ -225,12 +229,12 @@ export function HostWorkspacesPage({ serverId }: { serverId: string }) {
   return (
     <View>
       {isConnected ? (
-        <SettingsSection title="Workspaces">
+        <SettingsSection title={t("hostPage.workspaces")}>
           <AutoArchiveMergedWorkspacesCard serverId={serverId} />
         </SettingsSection>
       ) : (
         <View style={EMPTY_CARD_STYLE}>
-          <Text style={styles.emptyText}>Connect to this host to manage workspaces</Text>
+          <Text style={styles.emptyText}>{t("hostPage.connectToManageWorkspaces")}</Text>
         </View>
       )}
     </View>
@@ -287,6 +291,7 @@ export function HostRenameButton({ host }: { host: HostProfile }) {
   const { theme } = useUnistyles();
   const { renameHost } = useHostMutations();
   const [isEditing, setIsEditing] = useState(false);
+  const { t } = useI18n();
 
   const handleSubmit = useCallback(
     async (value: string) => {
@@ -307,7 +312,7 @@ export function HostRenameButton({ host }: { host: HostProfile }) {
         hitSlop={8}
         style={styles.identityEditButton}
         accessibilityRole="button"
-        accessibilityLabel="Edit label"
+        accessibilityLabel={t("hostPage.editLabel")}
         testID="host-page-label-edit-button"
       >
         <Pencil size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
@@ -315,10 +320,10 @@ export function HostRenameButton({ host }: { host: HostProfile }) {
 
       <AdaptiveRenameModal
         visible={isEditing}
-        title="Rename host"
+        title={t("hostPage.renameHost")}
         initialValue={host.label}
-        placeholder="My Host"
-        submitLabel="Save"
+        placeholder={t("hostPage.renameHostPlaceholder")}
+        submitLabel={t("settings.about.update")}
         onClose={closeEditor}
         onSubmit={handleSubmit}
         testID="host-page-rename-modal"
@@ -330,6 +335,7 @@ export function HostRenameButton({ host }: { host: HostProfile }) {
 function ConnectionsSection({ host }: { host: HostProfile }) {
   const { removeConnection } = useHostMutations();
   const snapshot = useHostRuntimeSnapshot(host.serverId);
+  const { t } = useI18n();
   const probeByConnectionId = snapshot?.probeByConnectionId ?? new Map();
   const [pendingRemoveConnection, setPendingRemoveConnection] = useState<{
     connectionId: string;
@@ -361,13 +367,13 @@ function ConnectionsSection({ host }: { host: HostProfile }) {
       .then(() => setPendingRemoveConnection(null))
       .catch((error) => {
         console.error("[HostPage] Failed to remove connection", error);
-        Alert.alert("Error", "Unable to remove connection");
+        Alert.alert("Error", t("hostPage.removeConnectionError"));
       })
       .finally(() => setIsRemovingConnection(false));
-  }, [pendingRemoveConnection, removeConnection, host.serverId]);
+  }, [pendingRemoveConnection, removeConnection, host.serverId, t]);
 
   return (
-    <SettingsSection title="Connections">
+    <SettingsSection title={t("hostPage.connections")}>
       <View style={settingsStyles.card} testID="host-page-connections-card">
         {host.connections.map((conn, index) => {
           const probe = probeByConnectionId.get(conn.id);
@@ -393,7 +399,7 @@ function ConnectionsSection({ host }: { host: HostProfile }) {
           testID="remove-connection-confirm-modal"
         >
           <Text style={styles.confirmText}>
-            Remove {pendingRemoveConnection.title}? This cannot be undone.
+            {t("hostPage.removeConnectionConfirm", { title: pendingRemoveConnection.title })}
           </Text>
           <View style={styles.confirmActions}>
             <Button
@@ -438,11 +444,12 @@ function ConnectionRow({
   onRemove: (connection: HostConnection) => void;
 }) {
   const { theme } = useUnistyles();
+  const { t } = useI18n();
   const title = formatHostConnectionLabel(connection);
 
   const latencyText = (() => {
     if (latencyLoading) return "...";
-    if (latencyError) return "Timeout";
+    if (latencyError) return t("hostPage.timeout");
     if (latencyMs != null) return formatLatency(latencyMs);
     return "—";
   })();
@@ -479,7 +486,7 @@ function ConnectionRow({
         textStyle={destructiveTextStyle}
         onPress={handlePressRemove}
       >
-        Remove
+        {t("hostPage.removeConnection")}
       </Button>
     </View>
   );
@@ -497,6 +504,7 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
   const runtime = getHostRuntimeStore();
   const [isRestarting, setIsRestarting] = useState(false);
   const isMountedRef = useRef(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     return () => {
@@ -533,32 +541,26 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
       setIsRestarting(false);
       if (!reconnected) {
         Alert.alert(
-          "Unable to reconnect",
-          `${host.label} did not come back online. Please verify it restarted.`,
+          t("hostPage.unableToReconnect"),
+          t("hostPage.unableToReconnectMessage", { label: host.label }),
         );
       }
     }
-  }, [host.label, isHostConnected, waitForCondition]);
+  }, [host.label, isHostConnected, waitForCondition, t]);
 
   const handleRestart = useCallback(() => {
     if (!daemonClient) {
-      Alert.alert(
-        "Host unavailable",
-        "This host is not connected. Wait for it to come online before restarting.",
-      );
+      Alert.alert(t("hostPage.hostUnavailable"), t("hostPage.hostUnavailableMessage"));
       return;
     }
     if (!isHostConnected()) {
-      Alert.alert(
-        "Host offline",
-        "This host is offline. Paseo reconnects automatically—wait until it's back online before restarting.",
-      );
+      Alert.alert(t("hostPage.hostOffline"), t("hostPage.hostOfflineMessage"));
       return;
     }
 
     void confirmDialog({
-      title: `Restart ${host.label}`,
-      message: RESTART_CONFIRMATION_MESSAGE,
+      title: t("hostPage.restartHost", { label: host.label }),
+      message: t("hostPage.restartConfirmMessage"),
       confirmLabel: "Restart",
       cancelLabel: "Cancel",
       destructive: true,
@@ -572,10 +574,7 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
             console.error(`[HostPage] Failed to restart daemon ${host.label}`, error);
             if (!isMountedRef.current) return;
             setIsRestarting(false);
-            Alert.alert(
-              "Error",
-              "Failed to send the restart request. Paseo reconnects automatically—try again once the host shows as online.",
-            );
+            Alert.alert("Error", t("hostPage.restartFailed"));
           });
         void waitForDaemonRestart();
         return;
@@ -584,7 +583,7 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
         console.error(`[HostPage] Failed to open restart confirmation for ${host.label}`, error);
         Alert.alert("Error", "Unable to open the restart confirmation dialog.");
       });
-  }, [daemonClient, host.label, host.serverId, isHostConnected, waitForDaemonRestart]);
+  }, [daemonClient, host.label, host.serverId, isHostConnected, waitForDaemonRestart, t]);
 
   const restartIcon = useMemo(
     () => <RotateCw size={theme.iconSize.sm} color={theme.colors.foreground} />,
@@ -595,10 +594,8 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
     <View style={settingsStyles.card} testID="host-page-restart-card">
       <View style={settingsStyles.row}>
         <View style={settingsStyles.rowContent}>
-          <Text style={settingsStyles.rowTitle}>Restart daemon</Text>
-          <Text style={settingsStyles.rowHint}>
-            Restarts the daemon process. The app will reconnect automatically
-          </Text>
+          <Text style={settingsStyles.rowTitle}>{t("hostPage.restartDaemon")}</Text>
+          <Text style={settingsStyles.rowHint}>{t("hostPage.restartDaemonHint")}</Text>
         </View>
         <Button
           variant="outline"
@@ -608,7 +605,7 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
           disabled={isRestarting || !daemonClient || !isConnected}
           testID="host-page-restart-button"
         >
-          {isRestarting ? "Restarting..." : "Restart"}
+          {isRestarting ? t("settings.about.installing") : t("hostPage.restartDaemon")}
         </Button>
       </View>
     </View>
@@ -618,6 +615,7 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
 function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { config, patchConfig } = useDaemonConfig(serverId);
+  const { t } = useI18n();
 
   const handleValueChange = useCallback(
     (next: boolean) => {
@@ -636,15 +634,13 @@ function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
     <View style={settingsStyles.card} testID="host-page-inject-mcp-card">
       <View style={settingsStyles.row}>
         <View style={settingsStyles.rowContent}>
-          <Text style={settingsStyles.rowTitle}>Enable Paseo tools</Text>
-          <Text style={settingsStyles.rowHint}>
-            Agents will be able to manage worktrees, agents and schedules
-          </Text>
+          <Text style={settingsStyles.rowTitle}>{t("hostPage.enablePaseoTools")}</Text>
+          <Text style={settingsStyles.rowHint}>{t("hostPage.enablePaseoToolsHint")}</Text>
         </View>
         <Switch
           value={config?.mcp.injectIntoAgents !== false}
           onValueChange={handleValueChange}
-          accessibilityLabel="Inject Paseo tools"
+          accessibilityLabel={t("hostPage.enablePaseoTools")}
         />
       </View>
     </View>
@@ -654,18 +650,19 @@ function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
 function AutoArchiveMergedWorkspacesCard({ serverId }: { serverId: string }) {
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { config, patchConfig } = useDaemonConfig(serverId);
+  const { t } = useI18n();
 
   const handleValueChange = useCallback(
     (next: boolean) => {
       void patchConfig({ autoArchiveAfterMerge: next }).catch((error) => {
         console.error("[HostPage] Failed to update auto-archive after merge", error);
         Alert.alert(
-          "Unable to update workspaces",
+          t("hostPage.unableToUpdateWorkspaces"),
           error instanceof Error ? error.message : String(error),
         );
       });
     },
-    [patchConfig],
+    [patchConfig, t],
   );
 
   if (!isConnected) return null;
@@ -674,15 +671,13 @@ function AutoArchiveMergedWorkspacesCard({ serverId }: { serverId: string }) {
     <View style={settingsStyles.card} testID="host-page-auto-archive-merged-workspaces-card">
       <View style={settingsStyles.row}>
         <View style={settingsStyles.rowContent}>
-          <Text style={settingsStyles.rowTitle}>Archive merged PR workspaces</Text>
-          <Text style={settingsStyles.rowHint}>
-            Automatically archive clean Paseo workspaces after their pull request is merged
-          </Text>
+          <Text style={settingsStyles.rowTitle}>{t("hostPage.archiveMergedWorkspaces")}</Text>
+          <Text style={settingsStyles.rowHint}>{t("hostPage.archiveMergedWorkspacesHint")}</Text>
         </View>
         <Switch
           value={config?.autoArchiveAfterMerge === true}
           onValueChange={handleValueChange}
-          accessibilityLabel="Archive merged PR workspaces"
+          accessibilityLabel={t("hostPage.archiveMergedWorkspaces")}
           testID="host-page-auto-archive-merged-workspaces-switch"
         />
       </View>
@@ -697,7 +692,8 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
   const [draft, setDraft] = useState(persistedPrompt);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const header = useMemo<SheetHeader>(() => ({ title: "Append system prompt" }), []);
+  const { t } = useI18n();
+  const header = useMemo<SheetHeader>(() => ({ title: t("hostPage.appendSystemPrompt") }), [t]);
 
   useEffect(() => {
     setDraft(persistedPrompt);
@@ -740,8 +736,8 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
       <View style={settingsStyles.card} testID="host-page-append-system-prompt-card">
         <View style={settingsStyles.row}>
           <View style={settingsStyles.rowContent}>
-            <Text style={settingsStyles.rowTitle}>System prompt</Text>
-            <Text style={settingsStyles.rowHint}>Adds a system prompt to all agents</Text>
+            <Text style={settingsStyles.rowTitle}>{t("hostPage.systemPrompt")}</Text>
+            <Text style={settingsStyles.rowHint}>{t("hostPage.systemPromptHint")}</Text>
           </View>
           <Button
             variant="outline"
@@ -764,10 +760,10 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
         >
           <SettingsTextAreaCard
             testID="host-page-append-system-prompt-input"
-            accessibilityLabel="Append system prompt"
+            accessibilityLabel={t("hostPage.appendSystemPrompt")}
             value={draft}
             onChangeText={setDraft}
-            placeholder="Always keep replies concise."
+            placeholder={t("hostPage.systemPromptPlaceholder")}
           />
           <View style={styles.appendPromptActions}>
             <Button
@@ -786,7 +782,7 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
               disabled={!hasChanges || isSaving}
               testID="host-page-append-system-prompt-save"
             >
-              {isSaving ? "Saving..." : "Save"}
+              {isSaving ? t("rename.saving") : t("settings.about.update")}
             </Button>
           </View>
         </AdaptiveModalSheet>
@@ -798,6 +794,7 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
 function PairDeviceRow() {
   const { theme } = useUnistyles();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { t } = useI18n();
 
   const handleOpen = useCallback(() => setIsModalOpen(true), []);
   const handleClose = useCallback(() => setIsModalOpen(false), []);
@@ -811,10 +808,8 @@ function PairDeviceRow() {
         testID="host-page-pair-device-row"
       >
         <View style={settingsStyles.rowContent}>
-          <Text style={settingsStyles.rowTitle}>Pair a device</Text>
-          <Text style={settingsStyles.rowHint}>
-            Scan a QR code or copy a link to connect your phone to this host
-          </Text>
+          <Text style={settingsStyles.rowTitle}>{t("hostPage.pairDevice")}</Text>
+          <Text style={settingsStyles.rowHint}>{t("hostPage.pairDeviceHint")}</Text>
         </View>
         <ChevronRight size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
       </Pressable>
@@ -844,6 +839,7 @@ function RemoveHostSection({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const daemonStatus = daemonStatusData?.status ?? null;
+  const { t } = useI18n();
 
   const destructiveTextStyle = useMemo(
     () => ({ color: theme.colors.destructive }),
@@ -904,7 +900,7 @@ function RemoveHostSection({
         console.error("[HostPage] Failed to remove host", error);
         Alert.alert(
           "Error",
-          isLocalDaemon ? "Unable to remove localhost connection" : "Unable to remove host",
+          isLocalDaemon ? t("hostPage.unableToRemoveLocalhost") : t("hostPage.unableToRemoveHost"),
         );
       })
       .finally(() => setIsRemoving(false));
@@ -917,13 +913,16 @@ function RemoveHostSection({
     rollbackLocalhostRemoval,
     setStatus,
     updateSettings,
+    t,
   ]);
 
   const confirmationHeader = useMemo<SheetHeader>(
     () => ({
-      title: isLocalDaemon ? "Remove localhost connection and stop daemon?" : "Remove host",
+      title: isLocalDaemon
+        ? t("hostPage.removeLocalhostConnectionAndStopDaemon")
+        : t("hostPage.removeHost"),
     }),
-    [isLocalDaemon],
+    [isLocalDaemon, t],
   );
 
   const removeIcon = useMemo(
@@ -932,19 +931,17 @@ function RemoveHostSection({
   );
 
   return (
-    <SettingsSection title="Danger zone" testID="host-page-remove-host-card">
+    <SettingsSection title={t("hostPage.dangerZone")} testID="host-page-remove-host-card">
       <RestartDaemonCard host={host} />
 
       <View style={settingsStyles.card}>
         <View style={settingsStyles.row}>
           <View style={settingsStyles.rowContent}>
             <Text style={settingsStyles.rowTitle}>
-              {isLocalDaemon ? "Remove localhost connection" : "Remove host"}
+              {isLocalDaemon ? t("hostPage.removeLocalhostConnection") : t("hostPage.removeHost")}
             </Text>
             <Text style={settingsStyles.rowHint}>
-              {isLocalDaemon
-                ? "Removes localhost from this device and stops the built-in daemon"
-                : "Removes this host and its saved connections from this device"}
+              {isLocalDaemon ? t("hostPage.removeLocalhostHint") : t("hostPage.removeHostHint")}
             </Text>
           </View>
           <Button
@@ -955,7 +952,7 @@ function RemoveHostSection({
             onPress={handleOpenConfirm}
             testID="host-page-remove-host-button"
           >
-            Remove
+            {t("hostPage.removeHost")}
           </Button>
         </View>
       </View>
@@ -969,8 +966,8 @@ function RemoveHostSection({
         >
           <Text style={styles.confirmText}>
             {isLocalDaemon
-              ? "This will remove the localhost connection, turn off built-in daemon management, and stop the managed daemon. Remote hosts remain connected."
-              : `Remove ${host.label}? This will delete its saved connections.`}
+              ? t("hostPage.removeLocalhostConfirmMessage")
+              : t("hostPage.removeHostConfirmMessage", { label: host.label })}
           </Text>
           <View style={styles.confirmActions}>
             <Button

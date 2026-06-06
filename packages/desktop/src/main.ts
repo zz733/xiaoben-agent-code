@@ -560,6 +560,7 @@ async function createWindow(
   });
 
   mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
     log.info("[main-window] ready-to-show fired");
   });
 

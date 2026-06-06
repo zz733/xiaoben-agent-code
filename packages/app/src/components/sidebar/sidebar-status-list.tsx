@@ -13,6 +13,7 @@ import { isWeb as platformIsWeb, isNative as platformIsNative } from "@/constant
 import { StyleSheet } from "react-native-unistyles";
 import type { Theme } from "@/styles/theme";
 import { withUnistyles } from "react-native-unistyles";
+import { useI18n } from "@/i18n";
 import {
   ChevronDown,
   ChevronRight,
@@ -108,9 +109,10 @@ export function SidebarStatusWorkspaceList({
   showShortcutBadges,
   onWorkspacePress,
 }: StatusWorkspaceListProps) {
+  const { t } = useI18n();
   const groups = useMemo(
-    () => buildStatusGroups(workspaces, projectNamesByKey),
-    [workspaces, projectNamesByKey],
+    () => buildStatusGroups(workspaces, projectNamesByKey, t),
+    [workspaces, projectNamesByKey, t],
   );
   const collapsedStatusGroupKeys = useSidebarCollapsedSectionsStore(
     (state) => state.collapsedStatusGroupKeys,

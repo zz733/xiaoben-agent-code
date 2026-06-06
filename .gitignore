@@ -86,5 +86,11 @@ packages/server/src/server/fixtures/dictation/dictation-debug-largest.transcript
 
 /artifacts
 packages/desktop/.cache/
+packages/desktop/release/
+packages/desktop/release-win/
 packages/desktop/src-tauri/resources/managed-runtime/
 app.json
+.qoder/
+config.js
+test-*.js
+test-*.mjs

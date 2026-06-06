@@ -1,17 +1,17 @@
 {
-  "apiType": "stageMode",
-  "buildOption": {
-    "externalNativeOptions": {
-      "path": "./src/main/cpp/CMakeLists.txt",
-      "arguments": "",
-      "cppFlags": "",
-      "cFlags": ""
-    }
+  apiType: "stageMode",
+  buildOption: {
+    externalNativeOptions: {
+      path: "./src/main/cpp/CMakeLists.txt",
+      arguments: "",
+      cppFlags: "",
+      cFlags: "",
+    },
   },
-  "targets": [
+  targets: [
     {
-      "name": "default",
-      "runtimeOS": "HarmonyOS"
-    }
-  ]
+      name: "default",
+      runtimeOS: "HarmonyOS",
+    },
+  ],
 }
