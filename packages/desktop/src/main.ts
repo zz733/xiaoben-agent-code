@@ -15,8 +15,18 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { app, BrowserWindow, Menu, ipcMain, nativeImage, net, protocol, session } from "electron";
-import { createDaemonCommandHandlers, registerDaemonManager, ensureDaemonRunning } from "./daemon/daemon-manager.js";
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  ipcMain,
+  nativeImage,
+  net,
+  protocol,
+  screen,
+  session,
+} from "electron";
+import { createDaemonCommandHandlers, registerDaemonManager } from "./daemon/daemon-manager.js";
 import { parsePassthroughCliArgsFromArgv, runPassthroughCli } from "./daemon/cli/passthrough.js";
 import { closeAllTransportSessions } from "./daemon/local-transport.js";
 import {
@@ -24,19 +34,21 @@ import {
   getMainWindowChromeOptions,
   getWindowBackgroundColor,
   resolveSystemWindowTheme,
+  resolveWindowBounds,
   setupWindowResizeEvents,
+  setupWindowStatePersistence,
   setupDefaultContextMenu,
   setupDragDropPrevention,
   buildStandardContextMenuItems,
 } from "./window/window-manager.js";
 import { setupDarwinCompositorWatchdog } from "./window/compositor-watchdog/index.js";
-import { registerDialogHandlers } from "./features/dialogs.js";
 import {
   registerNotificationHandlers,
   ensureNotificationCenterRegistration,
 } from "./features/notifications.js";
 import { registerOpenerHandlers } from "./features/opener.js";
-import { setupApplicationMenu } from "./features/menu.js";
+import { registerEditorTargetHandlers } from "./features/editor-targets.js";
+import { installPatchers } from "./i18n/index.js";
 import {
   getPaseoBrowserIdForWebContents,
   getPaseoBrowserWebContents,
@@ -45,7 +57,9 @@ import {
   setWorkspaceActivePaseoBrowserId,
 } from "./features/browser-webviews.js";
 import { parseOpenProjectPathFromArgv } from "./open-project-routing.js";
+import { PendingOpenProjectStore } from "./pending-open-project-store.js";
 import { getDesktopSettingsStore } from "./settings/desktop-settings-electron.js";
+import { clampWindowStateToWorkAreas, createWindowStateStore } from "./settings/window-state.js";
 import {
   isDesktopManagedDaemonRunningSync,
   stopDesktopDaemonViaCli,
@@ -55,6 +69,7 @@ import {
   stopDesktopManagedDaemonOnQuitIfNeeded,
 } from "./daemon/quit-lifecycle.js";
 import { runDesktopStartup } from "./desktop-startup.js";
+import { autoUpdateInstalledSkills } from "./integrations/skills/index.js";
 
 const DEV_SERVER_URL = process.env.EXPO_DEV_URL ?? "http://localhost:8081";
 const APP_SCHEME = "paseo";
@@ -84,7 +99,6 @@ function preventUnsafeBrowserWebviewNavigation(
     event.preventDefault();
   }
 }
-const OPEN_PROJECT_EVENT = "paseo:event:open-project";
 const BROWSER_SHORTCUT_EVENT = "paseo:event:browser-shortcut";
 const BROWSER_FORWARDED_KEY_EVENT = "paseo:event:browser-forwarded-key";
 
@@ -247,6 +261,12 @@ let pendingOpenProjectPath = parseOpenProjectPathFromArgv({
   isDefaultApp: process.defaultApp,
 });
 
+// Each window pulls its own pending open-project path on mount, keyed by
+// webContents id, so deep-linked windows (second-instance launches, the
+// in-app "Open in new window" action) land on the right project without
+// racing a global.
+const pendingOpenProjectStore = new PendingOpenProjectStore();
+
 if (PASEO_DEBUG) {
   log.info("[open-project] argv:", process.argv);
   log.info("[open-project] isDefaultApp:", process.defaultApp);
@@ -255,10 +275,13 @@ if (PASEO_DEBUG) {
 
 // The renderer pulls the pending path on mount via IPC — this avoids
 // a race where the push event arrives before React registers its listener.
-ipcMain.handle("paseo:get-pending-open-project", () => {
-  log.info("[open-project] renderer requested pending path:", pendingOpenProjectPath);
-  const result = pendingOpenProjectPath;
-  pendingOpenProjectPath = null;
+ipcMain.handle("paseo:get-pending-open-project", (event) => {
+  const webContentsId = event.sender.id;
+  const result = pendingOpenProjectStore.take(webContentsId);
+  log.info("[open-project] renderer requested pending path:", {
+    webContentsId,
+    pendingPath: result,
+  });
   return result;
 });
 
@@ -316,7 +339,10 @@ ipcMain.handle("paseo:browser:clear-partition", async (_event, browserId: unknow
 });
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  {
+    scheme: APP_SCHEME,
+    privileges: { standard: true, secure: true, supportFetchAPI: true },
+  },
 ]);
 
 // ---------------------------------------------------------------------------
@@ -377,16 +403,41 @@ function applyAppIcon(): void {
   app.dock?.setIcon(icon);
 }
 
-async function createMainWindow(): Promise<void> {
+// Work areas with the primary display first, so window-state clamping treats
+// it as the fallback. getAllDisplays() order is not guaranteed to lead with it.
+function getWorkAreasPrimaryFirst(): Electron.Rectangle[] {
+  const primary = screen.getPrimaryDisplay();
+  const others = screen.getAllDisplays().filter((display) => display.id !== primary.id);
+  return [primary, ...others].map((display) => display.workArea);
+}
+
+async function createWindow(
+  options: {
+    pendingOpenProjectPath?: string | null;
+    restoreWindowState?: boolean;
+  } = {},
+): Promise<BrowserWindow> {
   const iconPath = getWindowIconPath();
   const systemTheme = resolveSystemWindowTheme();
+
+  // Only the first window of a session restores and persists saved geometry.
+  // Additional windows (⌘N, second-instance, "Open in new window") open at the
+  // default size and let the OS cascade them, so they neither stack on top of
+  // the restored window nor fight over the single window-state store.
+  const restoreWindowState = options.restoreWindowState ?? false;
+  const windowStateStore = restoreWindowState
+    ? createWindowStateStore({ userDataPath: app.getPath("userData") })
+    : null;
+  const savedWindowState = windowStateStore ? await windowStateStore.load() : null;
+  const restoredWindowState = savedWindowState
+    ? clampWindowStateToWorkAreas(savedWindowState, getWorkAreasPrimaryFirst())
+    : null;
 
   const title = devWorktreeName ? `${APP_NAME} (${devWorktreeName})` : APP_NAME;
   const mainWindow = new BrowserWindow({
     title,
-    width: 1200,
-    height: 800,
-    show: true,  // Show immediately, don't wait for ready-to-show
+    ...resolveWindowBounds(restoredWindowState),
+    show: false,
     backgroundColor: getWindowBackgroundColor(systemTheme),
     ...(iconPath ? { icon: iconPath } : {}),
     ...getMainWindowChromeOptions({
@@ -401,12 +452,25 @@ async function createMainWindow(): Promise<void> {
     },
   });
 
+  const webContentsId = mainWindow.webContents.id;
+  pendingOpenProjectStore.set(webContentsId, options.pendingOpenProjectPath);
+  mainWindow.on("closed", () => {
+    pendingOpenProjectStore.delete(webContentsId);
+  });
+
   if (devWorktreeName) {
     app.dock?.setBadge(devWorktreeName);
   }
 
+  if (restoredWindowState?.isMaximized) {
+    mainWindow.maximize();
+  }
+
   setupDarwinCompositorWatchdog(mainWindow);
   setupWindowResizeEvents(mainWindow);
+  if (windowStateStore) {
+    setupWindowStatePersistence(mainWindow, windowStateStore);
+  }
   setupDefaultContextMenu(mainWindow);
   setupDragDropPrevention(mainWindow);
   mainWindow.webContents.on("will-attach-webview", (event, webPreferences, params) => {
@@ -506,37 +570,38 @@ async function createMainWindow(): Promise<void> {
       const { loadReactDevTools } = await import("./features/react-devtools.js");
       await Promise.race([
         loadReactDevTools(),
-        new Promise<void>((_, reject) => setTimeout(() => reject(new Error("timeout (10s)")), 10_000)),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout (10s)")), 10_000),
+        ),
       ]);
     } catch (err) {
-      log.warn("[react-devtools] failed to load, skipping:", err instanceof Error ? err.message : err);
+      log.warn(
+        "[react-devtools] failed to load, skipping:",
+        err instanceof Error ? err.message : err,
+      );
     }
     log.info("[main-window] loading URL:", DEV_SERVER_URL);
     await mainWindow.loadURL(DEV_SERVER_URL);
-    return;
+    return mainWindow;
   }
 
   await mainWindow.loadURL(`${APP_SCHEME}://app/`);
-}
-
-function sendOpenProjectEvent(win: BrowserWindow, projectPath: string): void {
-  const send = () => {
-    log.info("[open-project] sending event to renderer:", projectPath);
-    win.webContents.send(OPEN_PROJECT_EVENT, { path: projectPath });
-  };
-
-  if (win.webContents.isLoadingMainFrame()) {
-    log.info("[open-project] waiting for did-finish-load before sending event");
-    win.webContents.once("did-finish-load", send);
-    return;
-  }
-
-  send();
+  return mainWindow;
 }
 
 // ---------------------------------------------------------------------------
 // App lifecycle
 // ---------------------------------------------------------------------------
+
+// Resolves once bootstrap() has registered the custom protocol handler and IPC
+// handlers and created the first window. second-instance window creation waits
+// on this rather than app.whenReady(): in packaged mode createWindow loads
+// `paseo://app/`, which fails if the protocol handler isn't registered yet, and
+// a second instance can arrive mid-cold-start.
+let resolveBootstrapComplete: () => void;
+const bootstrapComplete = new Promise<void>((resolve) => {
+  resolveBootstrapComplete = resolve;
+});
 
 function setupSingleInstanceLock(): boolean {
   if (DISABLE_SINGLE_INSTANCE_LOCK) {
@@ -557,15 +622,14 @@ function setupSingleInstanceLock(): boolean {
       isDefaultApp: false,
     });
     log.info("[open-project] second-instance openProjectPath:", openProjectPath);
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win) {
-      win.show();
-      if (win.isMinimized()) win.restore();
-      win.focus();
-      if (openProjectPath) {
-        sendOpenProjectEvent(win, openProjectPath);
-      }
-    }
+    // Relaunching the app (CLI `paseo [path]`, double-click, etc.) opens a new
+    // window rather than focusing the existing one. Wait for bootstrap (not just
+    // app.whenReady) so the protocol + IPC handlers exist before the window loads.
+    void bootstrapComplete
+      .then(() => createWindow({ pendingOpenProjectPath: openProjectPath }))
+      .catch((error) => {
+        log.error("[window] failed to create window from second-instance", error);
+      });
   });
 
   return true;
@@ -646,9 +710,18 @@ async function bootstrap(): Promise<void> {
   // them for its network stack, which can prevent connections to localhost.
   // Clear ALL proxy-related env vars here so Chromium uses direct connections.
   for (const varName of [
-    "http_proxy", "https_proxy", "ftp_proxy", "ALL_PROXY", "all_proxy",
-    "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "no_proxy",
-    "ICUBE_PROXY_HOST", "ENV_PREVIEW_PROXY_ENABLED",
+    "http_proxy",
+    "https_proxy",
+    "ftp_proxy",
+    "ALL_PROXY",
+    "all_proxy",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "FTP_PROXY",
+    "NO_PROXY",
+    "no_proxy",
+    "ICUBE_PROXY_HOST",
+    "ENV_PREVIEW_PROXY_ENABLED",
   ]) {
     delete process.env[varName];
   }
@@ -688,30 +761,46 @@ async function bootstrap(): Promise<void> {
   });
 
   applyAppIcon();
-  setupApplicationMenu();
+  installPatchers({
+    onNewWindow: () => {
+      void createWindow().catch((error) => {
+        log.error("[window] failed to create window from menu", error);
+      });
+    },
+  });
   ensureNotificationCenterRegistration();
   if (await runDesktopSmokeIfRequested()) {
     return;
   }
   registerDaemonManager();
   registerWindowManager();
-  registerDialogHandlers();
   registerNotificationHandlers();
   registerOpenerHandlers();
+  registerEditorTargetHandlers();
 
-  // Auto-start the desktop-managed daemon if it's not already running.
-  // This runs in the background so it doesn't block window creation.
-  ensureDaemonRunning().catch((error) => {
-    log.warn("[desktop daemon] auto-start failed, user can start manually", {
-      error: error instanceof Error ? error.message : String(error),
+  // In-app "Open in new window": opens a window that lands on the given project
+  // via the same open-project flow as a CLI launch (no move, no ownership).
+  ipcMain.handle("paseo:window:openNew", async (_event, options?: unknown) => {
+    const pendingPath =
+      options && typeof options === "object" && "pendingOpenProjectPath" in options
+        ? (options as { pendingOpenProjectPath?: unknown }).pendingOpenProjectPath
+        : null;
+    await createWindow({
+      pendingOpenProjectPath: typeof pendingPath === "string" ? pendingPath : null,
     });
   });
 
-  await createMainWindow();
+  // The first window of the session restores and persists saved geometry.
+  await createWindow({ pendingOpenProjectPath, restoreWindowState: true });
+  pendingOpenProjectPath = null;
+
+  // Protocol + IPC handlers and the first window now exist: release any
+  // second-instance launches that arrived during cold start.
+  resolveBootstrapComplete();
 
   app.on("activate", async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      await createMainWindow();
+      await createWindow({ restoreWindowState: true });
     }
   });
 }
@@ -721,6 +810,11 @@ void runDesktopStartup({
   runCliPassthroughIfRequested,
   inheritLoginShellEnv,
   bootstrapGui: bootstrap,
+  autoUpdateInstalledSkills: () => {
+    void autoUpdateInstalledSkills().catch((error) => {
+      log.error("[skills] auto-update failed", error);
+    });
+  },
 }).catch((error) => {
   const message = error instanceof Error ? (error.stack ?? error.message) : String(error);
   process.stderr.write(`${message}\n`);

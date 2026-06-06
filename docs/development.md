@@ -43,6 +43,70 @@ In any worktree-style or portless setup, never assume default ports.
 `http://127.0.0.1:9223` so renderer CPU profiles can be captured through CDP.
 Override the port with `PASEO_ELECTRON_REMOTE_DEBUGGING_PORT` when `9223` is busy.
 
+### React render profiling
+
+The app has a gated React render profiler in
+`packages/app/src/utils/render-profiler.tsx`. Wrap the component boundary you want
+to measure with `RenderProfile`, then open the app with `?renderProfile=1`. When
+the query param is absent, `RenderProfile` returns children directly and records
+nothing.
+
+Captured samples are exposed on `globalThis.__PASEO_RENDER_PROFILE__`. Call
+`globalThis.__PASEO_RESET_RENDER_PROFILE__?.()` after warm-up and before the
+interaction you want to measure. If a memo comparator or subscription boundary
+needs explanation, call `recordRenderProfileReasons(id, reasons)` while profiling;
+reason counts are exposed on `globalThis.__PASEO_RENDER_PROFILE_REASONS__`.
+
+Use this workflow for any render investigation:
+
+1. Add stable `RenderProfile` boundaries around the suspected root and expensive
+   children. Keep IDs specific enough to compare before and after.
+2. Reproduce against real app state, not toy fixtures, whenever practical.
+3. Record an idle baseline first. If idle is noisy, fix or account for that
+   before optimizing the interaction.
+4. Warm up the route, reset profiler samples, run the exact interaction, then
+   compare `actualDuration`, render counts, and per-commit samples.
+5. When a memo boundary still renders, record reasons before changing code. Do
+   not guess from object identity alone.
+6. Keep changes that move the measured profile. Remove probes or memo wrappers
+   that do not move the number.
+
+What this caught during the workspace tab investigation:
+
+- A large apparent workspace cost was real interaction work, not daemon noise;
+  the idle baseline stayed near zero.
+- The expensive stream rerender was mostly prop identity churn from pane context
+  callbacks and capability objects, not new stream data.
+- Stabilizing provider actions at the pane boundary helped because every mounted
+  panel consumes that context.
+- Comparing value-shaped capability flags beat preserving object identity through
+  unrelated stores.
+- Some plausible fixes did not pay off: memoizing the tab row and composer draft
+  object barely moved the profile, so they were removed.
+
+Existing scenario script: workspace agent/terminal tab switching. Start Expo on
+web, keep a daemon available, then run:
+
+```bash
+PASEO_PROFILE_SERVER_ID=<server-id> \
+PASEO_PROFILE_WORKSPACE_ID=<workspace-path> \
+PASEO_PROFILE_AGENT_ID=<agent-id> \
+  npm run profile:workspace-tabs --workspace=@getpaseo/app
+```
+
+This script opens the app with `?renderProfile=1`, creates a temporary terminal
+tab, switches between a real agent and that terminal, prints aggregated React
+Profiler timings, then removes the temporary terminal. It is an example of the
+workflow above, not the only way to use the profiler. Useful knobs:
+
+```bash
+PASEO_PROFILE_APP_URL=http://localhost:19010 # Expo web URL
+PASEO_PROFILE_SWITCH_COUNT=1                # number of agent/terminal switch pairs
+PASEO_PROFILE_SWITCH_WAIT_MS=250            # delay after each click
+PASEO_PROFILE_IDLE_WAIT_MS=3000             # idle baseline before switching
+PASEO_PROFILE_DUMP_COMMITS=1                # include per-commit profiler samples
+```
+
 ### Desktop macOS compositor watchdog
 
 macOS display sleep can leave Chromium's GPU-process display link — the vsync
@@ -58,6 +122,12 @@ after a sustained stall while the window is visible and unlocked, restarts the
 GPU process so Chromium rebuilds the display link. The probe is skipped while
 the screen is locked or the window is hidden or minimized, since a window
 legitimately stops producing frames then.
+
+The watchdog deliberately leaves background throttling **enabled**. Calling
+`webContents.setBackgroundThrottling(false)` would keep the compositor producing
+frames non-stop, pinning ProMotion displays at 120Hz forever and draining the
+battery while the app is idle — so do not re-add it. The probe's visibility
+guards already prevent throttling from causing a false stall.
 
 ### Daemon logs
 
@@ -88,11 +158,13 @@ Every `scripts` entry with `"type": "service"` receives these environment variab
 
 | Variable                    | Value                                                                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `PASEO_SERVICE_<NAME>_URL`  | Proxied daemon URL for a declared peer service. Prefer this for peer discovery; it survives peer restarts.                |
+| `PASEO_SERVICE_<NAME>_URL`  | Proxied URL for a declared peer service. Prefer this for peer discovery; it survives peer restarts.                       |
 | `PASEO_SERVICE_<NAME>_PORT` | Raw ephemeral port for a declared peer service. Use only as a bypass escape hatch; it can go stale if that peer restarts. |
 | `PASEO_URL`                 | Self alias for `PASEO_SERVICE_<SELF>_URL`.                                                                                |
 | `PASEO_PORT`                | Self alias for `PASEO_SERVICE_<SELF>_PORT`.                                                                               |
 | `HOST`                      | Bind host for the service process.                                                                                        |
+
+Service proxy hostnames use the double-dash shape: `web--feature-auth--project.localhost` or, on the default branch, `web--project.localhost`. Optional public aliases use the same leftmost label under the configured public base host.
 
 `<NAME>` is normalized from the script name by uppercasing it, replacing each run of non-`A-Z0-9` characters with `_`, and trimming leading or trailing `_`. For example, `app-server` and `app.server` both normalize to `APP_SERVER`; that collision fails at spawn time with an actionable error.
 
@@ -131,6 +203,23 @@ For tighter loops, you can rebuild a single workspace:
 - Changed `packages/protocol/src/*` or `packages/client/src/*`: `npm run build:client`.
 - Changed `packages/server/src/*`, `packages/cli/src/*`, `packages/relay/src/*`, or `packages/highlight/src/*`: `npm run build:server`.
 - Changed app build dependencies: `npm run build:app-deps`.
+
+## ACP provider catalog versions
+
+The in-app ACP provider catalog pins package-runner entries (`npx`, `npm exec`,
+and `uvx`) to exact package versions. Run the drift checker regularly — and
+before releases — so catalog installs do not sit on stale agent versions:
+
+```bash
+npm run acp:version-drift        # report stale/non-exact package pins
+npm run acp:version-drift:check  # same, exits non-zero on drift
+npm run acp:version-drift:update # rewrite catalog pins to latest exact versions
+```
+
+The checker updates only package-runner catalog entries. Providers that use a
+preinstalled binary such as `opencode acp`, `cursor-agent acp`, or `goose acp`
+are reported as skipped because their versions are owned by the user's local
+install.
 
 ## CLI reference
 

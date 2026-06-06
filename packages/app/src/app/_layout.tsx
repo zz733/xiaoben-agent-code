@@ -1,4 +1,5 @@
 import "@/styles/unistyles";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalProvider } from "@gorhom/portal";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
@@ -40,11 +41,14 @@ import {
 } from "@/contexts/horizontal-scroll-context";
 import { SessionProvider } from "@/contexts/session-context";
 import {
+  MOBILE_VISUAL_PANEL_AGENT,
+  MOBILE_VISUAL_PANEL_AGENT_LIST,
   SidebarAnimationProvider,
   useSidebarAnimation,
 } from "@/contexts/sidebar-animation-context";
 import { SidebarCalloutProvider } from "@/contexts/sidebar-callout-context";
 import { ToastProvider } from "@/contexts/toast-context";
+import { I18nProvider } from "@/i18n";
 import { VoiceProvider } from "@/contexts/voice-context";
 import { startDaemonIfGateAllows, startHostRuntimeBootstrap } from "@/app/host-runtime-bootstrap";
 import { shouldUseDesktopDaemon } from "@/desktop/daemon/desktop-daemon";
@@ -73,6 +77,7 @@ import {
   useHosts,
 } from "@/runtime/host-runtime";
 import { getDaemonStartService } from "@/runtime/daemon-start-service";
+import { applyAppearance } from "@/screens/settings/appearance/apply-appearance";
 import { usePanelStore } from "@/stores/panel-store";
 import { THEME_TO_UNISTYLES, type ThemeName } from "@/styles/theme";
 import type { HostProfile } from "@/types/host-connection";
@@ -492,7 +497,6 @@ function MobileGestureWrapper({
   children: ReactNode;
   chromeEnabled: boolean;
 }) {
-  const mobileView = usePanelStore((state) => state.mobileView);
   const showMobileAgentList = usePanelStore((state) => state.showMobileAgentList);
   const horizontalScroll = useHorizontalScrollOptional();
   const {
@@ -502,12 +506,13 @@ function MobileGestureWrapper({
     animateToOpen,
     animateToClose,
     isGesturing,
+    mobileVisualPanel,
     gestureAnimatingRef,
     openGestureRef,
   } = useSidebarAnimation();
   const touchStartX = useSharedValue(0);
   const touchStartY = useSharedValue(0);
-  const openGestureEnabled = chromeEnabled && mobileView === "agent";
+  const openGestureEnabled = chromeEnabled;
 
   const handleGestureOpen = useCallback(() => {
     gestureAnimatingRef.current = true;
@@ -536,6 +541,11 @@ function MobileGestureWrapper({
           const deltaY = touch.absoluteY - touchStartY.value;
           const absDeltaX = Math.abs(deltaX);
           const absDeltaY = Math.abs(deltaY);
+
+          if (mobileVisualPanel.value !== MOBILE_VISUAL_PANEL_AGENT) {
+            stateManager.fail();
+            return;
+          }
 
           if (horizontalScroll?.isAnyScrolledRight.value) {
             stateManager.fail();
@@ -578,9 +588,11 @@ function MobileGestureWrapper({
           isGesturing.value = false;
           const shouldOpen = event.translationX > windowWidth / 3 || event.velocityX > 500;
           if (shouldOpen) {
+            mobileVisualPanel.value = MOBILE_VISUAL_PANEL_AGENT_LIST;
             animateToOpen();
             runOnJS(handleGestureOpen)();
           } else {
+            mobileVisualPanel.value = MOBILE_VISUAL_PANEL_AGENT;
             animateToClose();
           }
         })
@@ -592,6 +604,7 @@ function MobileGestureWrapper({
       windowWidth,
       translateX,
       backdropOpacity,
+      mobileVisualPanel,
       animateToOpen,
       animateToClose,
       handleGestureOpen,
@@ -624,6 +637,27 @@ function ProvidersWrapper({ children }: { children: ReactNode }) {
       UnistylesRuntime.setTheme(THEME_TO_UNISTYLES[settings.theme]);
     }
   }, [settingsLoading, settings.theme]);
+
+  // Apply font / size / syntax appearance settings on mount and when they change.
+  // Sibling to the theme effect above; order is irrelevant because both patch all
+  // six registered theme keys, so the active key is always current.
+  useEffect(() => {
+    if (settingsLoading) return;
+    applyAppearance({
+      uiFontFamily: settings.uiFontFamily,
+      monoFontFamily: settings.monoFontFamily,
+      uiFontSize: settings.uiFontSize,
+      codeFontSize: settings.codeFontSize,
+      syntaxTheme: settings.syntaxTheme,
+    });
+  }, [
+    settingsLoading,
+    settings.uiFontFamily,
+    settings.monoFontFamily,
+    settings.uiFontSize,
+    settings.codeFontSize,
+    settings.syntaxTheme,
+  ]);
 
   return (
     <VoiceProvider>
@@ -867,7 +901,8 @@ function RootStack() {
       <Stack.Screen name="h/[serverId]/sessions" />
       <Stack.Screen name="h/[serverId]/open-project" />
       <Stack.Screen name="h/[serverId]/settings" />
-      <Stack.Screen name="settings/hosts/[serverId]" />
+      <Stack.Screen name="settings/hosts/[serverId]/index" />
+      <Stack.Screen name="settings/hosts/[serverId]/[hostSection]" />
     </Stack>
   );
 }
@@ -898,17 +933,22 @@ function RuntimeProviders({ children }: { children: ReactNode }) {
   );
 }
 
-// PortalProvider must remain the innermost global provider here.
+// PortalProvider must stay inside normal app-wide context providers here.
 // `@gorhom/portal` renders portaled children at the host's location in the
 // tree, so any context a portaled sheet might consume (QueryClient, theme,
 // auth, settings, …) must wrap PortalProvider — not be wrapped by it.
-// Adding a new global provider? Put it above PortalProvider.
+// BottomSheetModalProvider is the exception: Gorhom modals consume portal
+// context and need one shared provider for sibling sheets to stack.
 function RootProviders({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
       <SafeAreaProvider>
         <KeyboardProvider>
-          <PortalProvider>{children}</PortalProvider>
+          <I18nProvider>
+            <PortalProvider>
+              <BottomSheetModalProvider>{children}</BottomSheetModalProvider>
+            </PortalProvider>
+          </I18nProvider>
         </KeyboardProvider>
       </SafeAreaProvider>
     </QueryProvider>

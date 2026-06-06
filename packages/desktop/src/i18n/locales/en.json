@@ -1,0 +1,33 @@
+{
+  "menu.file": "File",
+  "menu.file.newWindow": "New Window",
+  "menu.edit": "Edit",
+  "menu.view": "View",
+  "menu.view.zoomIn": "Zoom In",
+  "menu.view.zoomOut": "Zoom Out",
+  "menu.view.actualSize": "Actual Size",
+  "menu.view.reload": "Reload",
+  "menu.view.forceReload": "Force Reload",
+  "menu.window": "Window",
+
+  "menu.terminal.copy": "Copy",
+  "menu.terminal.paste": "Paste",
+  "menu.terminal.selectAll": "Select All",
+
+  "context.noSuggestions": "No suggestions",
+  "context.addToDictionary": "Add to Dictionary",
+  "context.openLinkInBrowser": "Open Link in Browser",
+  "context.copyLinkAddress": "Copy Link Address",
+  "context.copyImage": "Copy Image",
+  "context.saveImageAs": "Save Image As\u2026",
+
+  "dialog.confirm": "Confirm",
+  "dialog.cancel": "Cancel",
+  "dialog.ok": "OK",
+
+  "updater.notAvailableInDev": "Auto-update is not available in development mode.",
+  "updater.noUpdateAvailable": "No update available. Check for updates first.",
+  "updater.downloaded": "Update downloaded. The app will restart shortly.",
+  "updater.preparing": "Update is still being prepared. Try again in a moment.",
+  "updater.failed": "Update failed: {{message}}"
+}

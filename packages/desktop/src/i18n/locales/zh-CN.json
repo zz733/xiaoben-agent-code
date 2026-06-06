@@ -1,0 +1,33 @@
+{
+  "menu.file": "文件",
+  "menu.file.newWindow": "新建窗口",
+  "menu.edit": "编辑",
+  "menu.view": "视图",
+  "menu.view.zoomIn": "放大",
+  "menu.view.zoomOut": "缩小",
+  "menu.view.actualSize": "实际大小",
+  "menu.view.reload": "重新加载",
+  "menu.view.forceReload": "强制重新加载",
+  "menu.window": "窗口",
+
+  "menu.terminal.copy": "复制",
+  "menu.terminal.paste": "粘贴",
+  "menu.terminal.selectAll": "全选",
+
+  "context.noSuggestions": "无拼写建议",
+  "context.addToDictionary": "添加到字典",
+  "context.openLinkInBrowser": "在浏览器中打开链接",
+  "context.copyLinkAddress": "复制链接地址",
+  "context.copyImage": "复制图片",
+  "context.saveImageAs": "图片另存为\u2026",
+
+  "dialog.confirm": "确认",
+  "dialog.cancel": "取消",
+  "dialog.ok": "确定",
+
+  "updater.notAvailableInDev": "开发模式下无法自动更新。",
+  "updater.noUpdateAvailable": "暂无可用更新。请先检查更新。",
+  "updater.downloaded": "更新已下载，应用即将重启。",
+  "updater.preparing": "更新正在准备中，请稍后再试。",
+  "updater.failed": "更新失败：{{message}}"
+}
